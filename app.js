@@ -226,6 +226,7 @@ VIEWS.login = () => {
     u.type = r === "s" ? "text" : "email";
     hint.textContent = r === "s" ? "New student? Create an account and wait for approval." : "For JRP Education staff only.";
     signup.hidden = r !== "s";
+    $app.querySelectorAll("[data-mock]").forEach(x => x.hidden = r !== "s");
   };
   const { segS, segT, h, ul, u, p, hint, err, f, signup } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
   segS.onclick = () => set("s"); segT.onclick = () => set("t");
