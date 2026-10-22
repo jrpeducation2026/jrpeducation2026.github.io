@@ -232,7 +232,7 @@ VIEWS.login = () => {
       <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" placeholder="Password"></div>
       <div class="err" id="err" ${LOGIN_MSG ? "" : "hidden"}>${esc(LOGIN_MSG)}</div>
       <button class="btn btn-navy" id="go" type="submit">Log in</button>
-      <p class="hint" id="hint">New student? Create an account and wait for approval.</p>
+      <p class="hint" id="hint">New student? Create your free account.</p>
       <button type="button" class="btn btn-line" id="signup">Create student account</button>
     </form>
     ${mockCard()}
@@ -246,7 +246,7 @@ VIEWS.login = () => {
     ul.textContent = r === "s" ? "Username" : "Email";
     u.placeholder = r === "s" ? "e.g. rahul10" : "Teacher email";
     u.type = r === "s" ? "text" : "email";
-    hint.textContent = r === "s" ? "New student? Create an account and wait for approval." : "For JRP Education staff only.";
+    hint.textContent = r === "s" ? "New student? Create your free account." : "For JRP Education staff only.";
     signup.hidden = r !== "s";
     $app.querySelectorAll("[data-mock]").forEach(x => x.hidden = r !== "s");
   };
@@ -280,7 +280,7 @@ VIEWS.signup = () => {
       <div class="field"><label for="a9">Confirm</label><input id="a9" type="password" autocomplete="new-password"></div></div>
       <div class="err" id="err" hidden></div>
       <button class="btn btn-navy" type="submit" id="go">Create account</button>
-      <p class="hint">Your teacher will approve your account before you can take tests.</p>
+      <p class="hint">Your account is ready as soon as you create it.</p>
     </form>
   </div></main>`;
   const $ = id => document.getElementById(id);
@@ -301,7 +301,7 @@ VIEWS.signup = () => {
       const c = await createUserWithEmailAndPassword(auth2, usernameToEmail(username), password);
       const uid = c.user.uid;
       await setDoc(doc(db2, "users", uid), { name, cls, medium, mobile, father: $("a5").value.trim(), school: $("a6").value.trim(), username,
-        role: "student", active: false, status: "pending", selfSignup: true, createdAt: serverTimestamp() });
+        role: "student", active: true, status: "approved", selfSignup: true, createdAt: serverTimestamp() });
       await setDoc(doc(db2, "secrets", uid), { username, password });
       await signOut(auth2);
       await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
