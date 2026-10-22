@@ -207,3 +207,10 @@ main .in{display:flex;flex-direction:column;gap:16px;padding-block:18px 110px}
 .tbl th{background:var(--bg);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);position:sticky;top:0}
 .tbl tr:last-child td{border-bottom:0}
 .tbl td.g{color:var(--good);font-weight:700}.tbl td.w{color:var(--warn);font-weight:700}.tbl td.r{color:var(--bad)}
+.yt{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;color:var(--ink);text-decoration:none}
+.yt-ic{width:46px;height:32px;border-radius:9px;background:#e62117;display:grid;place-items:center;flex:none}
+.yt-ic svg{width:22px;height:22px;fill:#fff}
+.yt-t{flex:1;min-width:0;display:flex;flex-direction:column}
+.yt-t b{font-size:16px}
+.yt-t small{font-size:13px;color:var(--muted)}
+.yt-go{font-weight:700;font-size:14px;color:#c4190f}

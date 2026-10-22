@@ -71,6 +71,10 @@ const DEFAULT_SYLLABUS = {
     "Statistics", "Probability"]
 };
 const FULL = "Full Syllabus Test";
+const YOUTUBE_URL = "https://www.youtube.com/@jrpedu2026";
+const ytCard = () => `<a class="yt" href="${YOUTUBE_URL}" target="_blank" rel="noopener">
+  <span class="yt-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 8.5v7l6-3.5z"/></svg></span>
+  <span class="yt-t"><b>JRP Education on YouTube</b><small>Watch video lessons · @jrpedu2026</small></span><span class="yt-go">Open</span></a>`;
 const MARK_RIGHT = 4, MARK_WRONG = 1, CHAPTER_Q = 10, FULL_Q = 25;
 const L = "ABCD";
 
@@ -201,6 +205,7 @@ VIEWS.login = () => {
       <p class="hint" id="hint">New student? Create an account and wait for approval.</p>
       <button type="button" class="btn btn-line" id="signup">Create student account</button>
     </form>
+    ${ytCard()}
   </div></main>`;
   LOGIN_MSG = "";
   const set = r => {
@@ -329,6 +334,7 @@ VIEWS.home = () => {
       <div class="ic">★</div>
       <div><h3>Leaderboard</h3><p>See where you rank among students of your class.</p></div>
     </button>
+    ${ytCard()}
   </div></main>`;
   const cg = document.getElementById("cg");
   CLASSES.forEach(n => {
