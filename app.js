@@ -1326,10 +1326,25 @@ async function tabStudents(pane) {
     const rows = all.filter(s => (!fc || Number(s.cls) === Number(fc)) && (!fq || s.name.toLowerCase().includes(fq) || s.username.includes(fq)));
     const l = $("l"); l.innerHTML = "";
     if (!rows.length) { l.innerHTML = `<div class="empty"><h3>${all.length ? "No matching students" : "No students yet"}</h3><p>${all.length ? "Try another class or search." : "Tap Add student to create the first login."}</p></div>`; return; }
+    // grouped: class 6 → 12, then English → Hindi medium, names A → Z
+    const medRank = m => MEDIUMS.indexOf(m) < 0 ? 9 : MEDIUMS.indexOf(m);
+    rows.sort((a, b) => Number(a.cls) - Number(b.cls) || medRank(medOf(a)) - medRank(medOf(b)) || a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
+    const sum = document.createElement("p"); sum.className = "hint"; sum.textContent = `${rows.length} students`; l.appendChild(sum);
+    let lastC = null, lastM = null;
     rows.forEach(s => {
+      if (Number(s.cls) !== lastC) {
+        lastC = Number(s.cls); lastM = null;
+        const n = rows.filter(x => Number(x.cls) === lastC).length;
+        const h = document.createElement("div"); h.className = "grp-c"; h.innerHTML = `<b>Class ${lastC}</b><span>${n} student${n > 1 ? "s" : ""}</span>`; l.appendChild(h);
+      }
+      if (medOf(s) !== lastM) {
+        lastM = medOf(s);
+        const n = rows.filter(x => Number(x.cls) === lastC && medOf(x) === lastM).length;
+        const h = document.createElement("div"); h.className = "grp-m"; h.textContent = `${lastM} medium · ${n}`; l.appendChild(h);
+      }
       const b = document.createElement("button"); b.className = "item";
       b.innerHTML = `<div class="av">${esc(initials(s.name))}</div><div class="mid"><b></b><span></span></div><div class="end"><small>${s.active === false ? "Inactive" : ""}</small></div>`;
-      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `Class ${s.cls} · ${medOf(s)} · ${s.username}`;
+      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `${s.username}${s.mobile ? " · " + s.mobile : ""}`;
       const d = document.createElement("div"); d.className = "detail"; d.hidden = true;
       b.onclick = async () => { d.hidden = !d.hidden; if (!d.hidden && !d.dataset.ok) await studentDetail(d, s, loadList); };
       l.appendChild(b); l.appendChild(d);
@@ -1729,7 +1744,7 @@ VIEWS.allStudents = async () => {
     const st = stat[u.id] || { n: 0, sum: 0, last: 0 };
     return { Name: u.name, Class: u.cls, Medium: medOf(u), Username: u.username, Password: secrets[u.id] || "", Mobile: u.mobile || "", "Father's name": u.father || "", School: u.school || "",
       Status: u.status === "pending" ? "Pending" : u.active === false ? "Inactive" : "Active", "Tests taken": st.n, "Average %": st.n ? Math.round(st.sum / st.n * 100) : "", "Last test": st.last ? fmtDate(st.last) : "" };
-  }).sort((a, b) => a.Class - b.Class || a.Name.localeCompare(b.Name));
+  }).sort((a, b) => a.Class - b.Class || MEDIUMS.indexOf(a.Medium) - MEDIUMS.indexOf(b.Medium) || a.Name.localeCompare(b.Name, "en", { sensitivity: "base" }));
   const cols = rows.length ? Object.keys(rows[0]) : [];
   const box = document.getElementById("in");
   box.innerHTML = `
