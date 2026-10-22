@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword,
+  GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
   signOut, createUserWithEmailAndPassword, updatePassword, sendEmailVerification
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -214,6 +215,8 @@ onAuthStateChanged(auth, async user => {
     }
     const p = await getDoc(doc(db, "users", user.uid));
     if (p.exists() && p.data().status === "pending") { S.profile = { id: user.uid, ...p.data() }; resetTo("pending"); return; }
+    const isGoogle = user.providerData.some(x => x.providerId === "google.com");
+    if (!p.exists() && isGoogle) { resetTo("gsetup"); return; }
     if (!p.exists() || p.data().active === false) {
       await signOut(auth);
       LOGIN_MSG = "This account is not active. Please contact JRP Education.";
@@ -239,12 +242,14 @@ VIEWS.login = () => {
         <button type="button" role="tab" id="segT" aria-selected="false">Teacher</button>
       </div>
       <h1 id="h" style="font-size:24px">Student login</h1>
+      <button type="button" class="btn gbtn" id="gg"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#4285F4" d="M45 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.3 6.6v5.5h7c4.1-3.8 6.5-9.4 6.5-16.1z"/><path fill="#34A853" d="M24 46c5.9 0 10.8-2 14.5-5.3l-7-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.7 0-10.6-3.9-12.3-9.1H4.5v5.7C8.1 41.1 15.5 46 24 46z"/><path fill="#FBBC05" d="M11.7 28.2c-.4-1.3-.7-2.7-.7-4.2s.3-2.9.7-4.2v-5.7H4.5C3 17.1 2 20.4 2 24s1 6.9 2.5 9.9z"/><path fill="#EA4335" d="M24 10.7c3.2 0 6.1 1.1 8.4 3.3l6.3-6.3C34.8 4.1 29.9 2 24 2 15.5 2 8.1 6.9 4.5 14.1l7.2 5.7c1.7-5.2 6.6-9.1 12.3-9.1z"/></svg>Continue with Google</button>
+      <p class="hint" id="gh" style="text-align:center">New and existing students: sign in with your Gmail account.</p>
+      <div class="or" id="or"><span>or log in with username</span></div>
       <div class="field"><label for="u" id="ul">Username</label><input id="u" type="text" autocomplete="username" autocapitalize="none" placeholder="e.g. rahul10"></div>
       <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" placeholder="Password"></div>
       <div class="err" id="err" ${LOGIN_MSG ? "" : "hidden"}>${esc(LOGIN_MSG)}</div>
       <button class="btn btn-navy" id="go" type="submit">Log in</button>
-      <p class="hint" id="hint">New student? Create your free account.</p>
-      <button type="button" class="btn btn-line" id="signup">Create student account</button>
+      <p class="hint" id="hint">Username login is for accounts made by your teacher.</p>
     </form>
     ${mockCard()}
     ${ytCard()}
@@ -257,13 +262,13 @@ VIEWS.login = () => {
     ul.textContent = r === "s" ? "Username" : "Email";
     u.placeholder = r === "s" ? "e.g. rahul10" : "Teacher email";
     u.type = r === "s" ? "text" : "email";
-    hint.textContent = r === "s" ? "New student? Create your free account." : "For JRP Education staff only.";
-    signup.hidden = r !== "s";
+    hint.textContent = r === "s" ? "Username login is for accounts made by your teacher." : "For JRP Education staff only.";
+    gg.hidden = gh.hidden = or.hidden = r !== "s";
     $app.querySelectorAll("[data-mock]").forEach(x => x.hidden = r !== "s");
   };
-  const { segS, segT, h, ul, u, p, hint, err, f, signup } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
+  const { segS, segT, h, ul, u, p, hint, err, f, gg, gh, or } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
   segS.onclick = () => set("s"); segT.onclick = () => set("t");
-  signup.onclick = () => go("signup");
+  gg.onclick = () => googleSignIn(err, gg);
   wireMock();
   f.onsubmit = async e => {
     e.preventDefault(); err.hidden = true;
@@ -271,6 +276,56 @@ VIEWS.login = () => {
     const btn = document.getElementById("go"); btn.disabled = true; btn.textContent = "Logging in…";
     try { await signInWithEmailAndPassword(auth, usernameToEmail(u.value), p.value); }
     catch (x) { err.textContent = errText(x); err.hidden = false; btn.disabled = false; btn.textContent = "Log in"; }
+  };
+};
+
+/* ----- Google sign-in for students ----- */
+async function googleSignIn(err, btn) {
+  err.hidden = true; btn.disabled = true;
+  const provider = new GoogleAuthProvider(); provider.setCustomParameters({ prompt: "select_account" });
+  try { await signInWithPopup(auth, provider); }
+  catch (x) {
+    const c = x && x.code || "";
+    if (c.includes("popup-blocked") || c.includes("operation-not-supported")) { try { await signInWithRedirect(auth, provider); return; } catch (y) { x = y; } }
+    btn.disabled = false;
+    if (c.includes("popup-closed") || c.includes("cancelled-popup")) return;
+    err.textContent = c.includes("unauthorized-domain") || c.includes("operation-not-allowed") ? "Google sign-in is not switched on yet. Please tell your teacher." : errText(x);
+    err.hidden = false;
+  }
+}
+getRedirectResult(auth).catch(() => {});
+
+VIEWS.gsetup = () => {
+  const u = S.user;
+  $app.innerHTML = header("Complete your profile", u.email, false) + `
+  <main><div class="in">
+    <form class="card" id="f" novalidate>
+      <h2 style="font-size:20px">Welcome to JRP Education!</h2>
+      <p class="hint">One last step. Tell us your class and details.</p>
+      <div class="field"><label for="a1">Full name</label><input id="a1" type="text" autocomplete="name" value="${esc(u.displayName || "")}"></div>
+      <div class="two"><div class="field"><label for="a2">Class</label><select id="a2">${classOptions(10)}</select></div>
+      <div class="field"><label for="a3">Medium</label><select id="a3">${medOptions("English")}</select></div></div>
+      <div class="field"><label for="a4">Mobile</label><input id="a4" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number"></div>
+      <div class="field"><label for="a5">Father's name</label><input id="a5" type="text"></div>
+      <div class="field"><label for="a6">School (optional)</label><input id="a6" type="text"></div>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" type="submit" id="go">Start learning</button>
+      <button class="btn btn-line" type="button" id="out">Use a different Gmail</button>
+    </form>
+  </div></main>`;
+  const $ = id => document.getElementById(id);
+  $("out").onclick = () => signOut(auth);
+  $("f").onsubmit = async e => {
+    e.preventDefault(); const err = $("err"); err.hidden = true;
+    const fail = m => { err.textContent = m; err.hidden = false; };
+    const name = $("a1").value.trim(), mobile = $("a4").value.trim();
+    if (!name) return fail("Enter your name.");
+    if (!/^\d{10}$/.test(mobile)) return fail("Enter a 10-digit mobile number.");
+    $("go").disabled = true;
+    const prof = { name, cls: Number($("a2").value), medium: $("a3").value, mobile, father: $("a5").value.trim(), school: $("a6").value.trim(),
+      username: (u.email || "").split("@")[0], email: u.email || "", provider: "google", role: "student", active: true, status: "approved", selfSignup: true, createdAt: serverTimestamp() };
+    try { await setDoc(doc(db, "users", u.uid), prof); S.profile = { id: u.uid, ...prof }; resetTo("home"); }
+    catch (x) { fail(errText(x)); $("go").disabled = false; }
   };
 };
 
@@ -1046,9 +1101,9 @@ VIEWS.mock = ({ medium } = {}) => {
         showResult({ rec, qs, ans, auto, saved: true });
         if (!S.user) {
           const cta = document.createElement("div"); cta.className = "card";
-          cta.innerHTML = `<h3 style="font-size:18px">Want more tests like this?</h3><p>Create a free student account to get chapter tests, test series and your rank.</p><button class="btn btn-gold" id="cta">Create student account</button>`;
+          cta.innerHTML = `<h3 style="font-size:18px">Want more tests like this?</h3><p>Create a free student account to get chapter tests, test series and your rank.</p><button class="btn btn-gold" id="cta">Sign in with Google</button>`;
           document.querySelector("main .in").insertBefore(cta, document.querySelector("main .in").children[1]);
-          document.getElementById("cta").onclick = () => go("signup", {}, { replace: true });
+          document.getElementById("cta").onclick = () => resetTo("login");
         }
       } });
   };
@@ -1423,7 +1478,7 @@ VIEWS.board = async () => {
 
 VIEWS.profile = () => {
   const p = S.profile;
-  const rows = [["Name", p.name], ["Username", p.username], ["Class", p.cls + "th"], ["Medium", myMed()], ["Mobile", p.mobile], ["Father's name", p.father], ["School", p.school]].filter(r => r[1]);
+  const rows = [["Name", p.name], ["Username", p.username], ["Class", p.cls + "th"], ["Medium", myMed()], ["Gmail", p.email], ["Mobile", p.mobile], ["Father's name", p.father], ["School", p.school]].filter(r => r[1]);
   $app.innerHTML = appbar() + `
   <main><div class="in">
     <div class="card"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="width:52px;height:52px;font-size:18px">${esc(initials(p.name))}</div><div><h2 style="font-size:20px">${esc(p.name)}</h2><p class="hint">Student · Class ${esc(p.cls)}</p></div></div>

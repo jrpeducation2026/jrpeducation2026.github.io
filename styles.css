@@ -356,3 +356,7 @@ main.chatmain .in{padding-bottom:150px}
 html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 img{-webkit-user-drag:none}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;border:1.5px solid var(--line);color:#1f1f1f;font-size:16px;padding:12px}
+.gbtn svg{width:22px;height:22px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
