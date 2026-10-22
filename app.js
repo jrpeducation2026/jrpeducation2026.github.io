@@ -170,7 +170,7 @@ async function loadMyResults(force) {
 /* ---------- auth ---------- */
 onAuthStateChanged(auth, async user => {
   S.user = user; S.profile = null; S.admin = false; S.myResults = null; stack.length = 0;
-  if (!user) { ALERTS.notices = ALERTS.tests = ALERTS.live = 0; updateBadge(); }
+  if (!user) { ALERTS.notices = ALERTS.tests = ALERTS.live = 0; updateBadge(); narexModel = null; narexChat = null; narexHist = []; }
   if (!user) { resetTo("login"); return; }
   loading();
   try {
@@ -339,6 +339,7 @@ VIEWS.home = () => {
     <div class="list" id="notices" hidden></div>
     <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all</button></div>
     <div class="chs" id="series"></div>
+    <button class="banner narex" id="askN"><div class="ic">N</div><div style="flex:1;min-width:0"><h3>Ask NareX</h3><p>Your AI maths helper. Ask any doubt, get step-by-step help.</p></div></button>
     ${mockCard()}
     <div class="sec-h"><h2>Books</h2><span>Study material</span></div>
     <div class="list" id="books"></div>
@@ -362,6 +363,7 @@ VIEWS.home = () => {
   document.getElementById("allT").onclick = () => go("series");
   wireMock();
   fillBooks(document.getElementById("books"));
+  document.getElementById("askN").onclick = () => go("narex");
   fillSeries(document.getElementById("series"), false);
   fillNotices(document.getElementById("notices"), false);
 };
@@ -980,6 +982,95 @@ async function tabPayments(pane) {
     l.appendChild(d);
   });
 }
+
+
+/* ----- NareX: AI doubt solver (Gemini free tier via Firebase AI Logic) ----- */
+const NAREX = { daily: 15, sdks: ["12.6.0", "12.2.1", "12.0.0"], models: ["gemini-flash-latest", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite"] };
+let narexModel = null, narexChat = null, narexHist = [];
+function narexPrompt() {
+  const p = S.profile, hi = myMed() === "Hindi";
+  return `You are NareX, the friendly maths teacher assistant of JRP Education, a coaching institute in Rajasthan, India (author of the book "JRP Maths Concepts").
+You are talking to ${p.name}, a Class ${p.cls} student studying in ${hi ? "Hindi" : "English"} medium (NCERT / RBSE syllabus).
+Rules:
+- ${hi ? "Reply in simple Hindi written in Devanagari script. Keep maths terms as used in NCERT Hindi books." : "Reply in simple English."}
+- Solve maths and study doubts step by step, the way a good teacher explains on a board. Number the steps. Show the formula first, then substitution, then the answer.
+- Keep answers short and clear for a Class ${p.cls} student. End with the final answer on its own line.
+- Write maths in plain text with symbols like ², ³, √, π, ×, ÷, θ. Do not use LaTeX or code blocks.
+- If a question is not about studies, politely say you only help with studies and invite a maths question.
+- If you are not sure, say so and suggest asking the teacher at JRP Education.
+- Never claim to be a human. Never share personal data.`;
+}
+async function narexInit() {
+  if (narexModel) return narexModel;
+  let mods = null;
+  for (const v of NAREX.sdks) {
+    const base = `https://www.gstatic.com/firebasejs/${v}/`;
+    try { mods = await Promise.all([import(base + "firebase-app.js"), import(base + "firebase-ai.js")]); break; } catch (e) {}
+  }
+  if (!mods) throw new Error("NareX could not load. Check your internet.");
+  const [{ initializeApp: ia, getApps }, ai] = mods;
+  const aiApp = getApps().find(a => a.name === "narex") || ia(firebaseConfig, "narex");
+  const inst = ai.getAI(aiApp, { backend: new ai.GoogleAIBackend() });
+  let lastErr;
+  for (const m of NAREX.models) {
+    try {
+      const model = ai.getGenerativeModel(inst, { model: m, systemInstruction: narexPrompt() });
+      await model.countTokens("ok");
+      narexModel = model; return model;
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr || new Error("NareX is not available right now.");
+}
+const narexKey = () => `jrp-narex-${S.user.uid}-${new Date().toISOString().slice(0, 10)}`;
+const narexUsed = () => { try { return Number(localStorage.getItem(narexKey())) || 0; } catch (e) { return 0; } };
+const narexUse = () => { try { localStorage.setItem(narexKey(), String(narexUsed() + 1)); } catch (e) {} };
+function narexHtml(t) {
+  return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\$+/g, "").replace(/\n/g, "<br>");
+}
+VIEWS.narex = () => {
+  const hi = myMed() === "Hindi";
+  $app.innerHTML = header("NareX", "AI maths helper · JRP Education", true) + `
+  <main class="chatmain"><div class="in">
+    <div class="chat" id="chat"></div>
+    <p class="hint" style="text-align:center">NareX is an AI and can make mistakes. Check important answers with your teacher.</p>
+  </div></main>
+  <form class="composer" id="cf"><div class="in">
+    <textarea id="cq" rows="1" placeholder="${hi ? "अपना सवाल लिखें…" : "Type your maths question…"}"></textarea>
+    <button class="btn btn-navy" id="cs" type="submit" aria-label="Send">Send</button>
+  </div><div class="in"><span class="hint" id="left"></span></div></form>`;
+  const chat = document.getElementById("chat"), cq = document.getElementById("cq"), cs = document.getElementById("cs"), left = document.getElementById("left");
+  const bubble = (who, html) => { const d = document.createElement("div"); d.className = "msg " + who; d.innerHTML = (who === "bot" ? `<span class="nx">N</span>` : "") + `<div class="b">${html}</div>`; chat.appendChild(d); d.scrollIntoView({ block: "end" }); return d.querySelector(".b"); };
+  const showLeft = () => { const l = NAREX.daily - narexUsed(); left.textContent = l > 0 ? `${l} of ${NAREX.daily} questions left today` : "Daily limit reached. Come back tomorrow."; cs.disabled = l <= 0; };
+  bubble("bot", narexHtml(hi
+    ? `नमस्ते ${S.profile.name.split(" ")[0]}! मैं NareX हूँ। गणित का कोई भी सवाल पूछो, मैं स्टेप-बाय-स्टेप समझाऊँगा।\n\nजैसे: "x² − 5x + 6 = 0 हल करो" या "sin 30° + cos 60° का मान?"`
+    : `Hi ${S.profile.name.split(" ")[0]}! I'm NareX. Ask me any maths doubt and I'll explain it step by step.\n\nFor example: "Solve x² − 5x + 6 = 0" or "What is sin 30° + cos 60°?"`));
+  narexHist.forEach(m => bubble(m.who, narexHtml(m.text)));
+  showLeft();
+  cq.addEventListener("input", () => { cq.style.height = "auto"; cq.style.height = Math.min(cq.scrollHeight, 140) + "px"; });
+  document.getElementById("cf").onsubmit = async e => {
+    e.preventDefault();
+    const q = cq.value.trim(); if (!q || cs.disabled) return;
+    if (narexUsed() >= NAREX.daily) { showLeft(); return; }
+    cq.value = ""; cq.style.height = "auto"; cs.disabled = true;
+    bubble("me", narexHtml(q)); narexHist.push({ who: "me", text: q });
+    const out = bubble("bot", `<span class="dots"><i></i><i></i><i></i></span>`);
+    try {
+      const model = await narexInit();
+      if (!narexChat) narexChat = model.startChat({ history: [] });
+      const res = await narexChat.sendMessageStream(q);
+      let text = "";
+      for await (const ch of res.stream) { text += ch.text(); out.innerHTML = narexHtml(text); out.scrollIntoView({ block: "end" }); }
+      narexHist.push({ who: "bot", text }); narexUse();
+    } catch (x) {
+      const m = String(x && (x.message || x.code) || "");
+      out.innerHTML = m.includes("quota") || m.includes("429") ? "NareX is busy right now. Please try again in a few minutes."
+        : m.includes("api-not-enabled") || m.includes("not been used") || m.includes("disabled") ? "NareX is not switched on yet. Please tell your teacher."
+        : "Sorry, I could not answer. Check your internet and try again.";
+      narexChat = null;
+    }
+    showLeft(); cq.focus();
+  };
+};
 
 /* ----- student: results, rank, profile ----- */
 VIEWS.results = async () => {
