@@ -1064,12 +1064,12 @@ VIEWS.narex = () => {
   $app.innerHTML = header("NareX", T ? "AI assistant for teachers" : "AI maths helper · JRP Education", true) + `
   <main class="chatmain"><div class="in">
     <div class="chat" id="chat"></div>
-    <p class="hint" style="text-align:center">NareX is an AI and can make mistakes. Check important answers with your teacher.</p>
+    ${T ? "" : `<p class="hint" style="text-align:center">NareX is an AI and can make mistakes. Check important answers with your teacher.</p>`}
   </div></main>
   <form class="composer" id="cf"><div class="in" id="prev" hidden><div class="att"><img id="pimg" alt="Attached photo"><button type="button" class="link" id="prm">Remove</button></div></div><div class="in">
     <label class="attach" for="cimg" aria-label="Add photo"><svg viewBox="0 0 24 24"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg></label>
     <input id="cimg" type="file" accept="image/*" hidden>
-    <textarea id="cq" rows="1" placeholder="${T ? "e.g. 10 MCQs on Polynomials, Class 10, Hindi" : hi ? "अपना सवाल लिखें…" : "Type your maths question…"}"></textarea>
+    <textarea id="cq" rows="1" placeholder="${T ? "Type here…" : hi ? "सवाल लिखें…" : "Ask a question…"}"></textarea>
     <button class="btn btn-navy" id="cs" type="submit" aria-label="Send">Send</button>
   </div><div class="in"><span class="hint" id="left"></span></div></form>`;
   const chat = document.getElementById("chat"), cq = document.getElementById("cq"), cs = document.getElementById("cs"), left = document.getElementById("left");
@@ -1086,7 +1086,7 @@ VIEWS.narex = () => {
   const prev = document.getElementById("prev"), pimg = document.getElementById("pimg"), cimg = document.getElementById("cimg");
   cimg.onchange = async () => {
     const f = cimg.files && cimg.files[0]; cimg.value = ""; if (!f) return;
-    try { img = await shrinkImage(f); pimg.src = img.url; prev.hidden = false; cq.placeholder = T ? "What should I do with this photo?" : hi ? "फोटो के बारे में लिखें (वैकल्पिक)…" : "Add a note (optional)…"; }
+    try { img = await shrinkImage(f); pimg.src = img.url; prev.hidden = false; cq.placeholder = T ? "Add a note…" : hi ? "कुछ लिखें…" : "Add a note…"; }
     catch (e) { toast("Could not read this photo"); }
   };
   document.getElementById("prm").onclick = () => { img = null; prev.hidden = true; };
