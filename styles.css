@@ -260,3 +260,5 @@ main.chatmain .in{padding-bottom:150px}
 .grp-c{display:flex;justify-content:space-between;align-items:baseline;background:var(--navy);color:#fff;border-radius:10px;padding:8px 14px;margin-top:8px}
 .grp-c b{font-family:var(--f-display);font-size:18px}.grp-c span{font-size:13px;color:#c9d4f2}
 .grp-m{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a6300;background:var(--gold-soft);border-radius:8px;padding:4px 12px;align-self:flex-start}
+.av.sn{background:var(--bg);color:var(--navy);font-size:14px;font-variant-numeric:tabular-nums}
+.item .end.mob{font-family:var(--f-body);font-size:15px;font-weight:700;letter-spacing:.02em}

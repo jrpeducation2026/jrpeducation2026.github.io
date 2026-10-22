@@ -1218,13 +1218,13 @@ VIEWS.profile = () => {
 };
 
 /* ---------- teacher panel ---------- */
-let TTAB = "ts";
+let TTAB = "st";
 VIEWS.teacher = async () => {
   $app.innerHTML = `<div class="top"><div class="in"><div class="top-mark"><img src="${LOGO}" alt=""></div><div class="tt"><h2>Teacher Panel</h2><small>JRP Education · Admin</small></div><button class="back nxb" id="nxb">NareX</button><button class="back" id="out">Log out</button></div></div>
   <main><div class="in">
     <div class="stats three" id="st"><div><b>–</b><span>Students</span></div><div><b>–</b><span>Tests taken</span></div><div><b>–</b><span>Questions</span></div></div>
     <div class="tabs" role="tablist">
-      <button class="tb" data-t="ts">Test Series</button><button class="tb" data-t="nb">Notices</button><button class="tb" data-t="pay">Payments</button><button class="tb" data-t="st">Students</button><button class="tb" data-t="rs">Results</button><button class="tb" data-t="qs">Questions</button><button class="tb" data-t="sy">Syllabus & Notes</button>
+      <button class="tb" data-t="st">Students</button><button class="tb" data-t="ts">Test Series</button><button class="tb" data-t="nb">Notices</button><button class="tb" data-t="pay">Payments</button><button class="tb" data-t="rs">Results</button><button class="tb" data-t="qs">Questions</button><button class="tb" data-t="sy">Syllabus & Notes</button>
     </div>
     <div id="pane"></div>
   </div></main>`;
@@ -1330,8 +1330,9 @@ async function tabStudents(pane) {
     const medRank = m => MEDIUMS.indexOf(m) < 0 ? 9 : MEDIUMS.indexOf(m);
     rows.sort((a, b) => Number(a.cls) - Number(b.cls) || medRank(medOf(a)) - medRank(medOf(b)) || a.name.localeCompare(b.name, "en", { sensitivity: "base" }));
     const sum = document.createElement("p"); sum.className = "hint"; sum.textContent = `${rows.length} students`; l.appendChild(sum);
-    let lastC = null, lastM = null;
+    let lastC = null, lastM = null, sn = 0;
     rows.forEach(s => {
+      sn++;
       if (Number(s.cls) !== lastC) {
         lastC = Number(s.cls); lastM = null;
         const n = rows.filter(x => Number(x.cls) === lastC).length;
@@ -1343,8 +1344,8 @@ async function tabStudents(pane) {
         const h = document.createElement("div"); h.className = "grp-m"; h.textContent = `${lastM} medium · ${n}`; l.appendChild(h);
       }
       const b = document.createElement("button"); b.className = "item";
-      b.innerHTML = `<div class="av">${esc(initials(s.name))}</div><div class="mid"><b></b><span></span></div><div class="end"><small>${s.active === false ? "Inactive" : ""}</small></div>`;
-      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `${s.username}${s.mobile ? " · " + s.mobile : ""}`;
+      b.innerHTML = `<div class="av sn">${sn}</div><div class="mid"><b></b><span></span></div><div class="end mob">${s.mobile ? esc(s.mobile) : "<small>No number</small>"}${s.active === false ? "<br><small>Inactive</small>" : ""}</div>`;
+      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `${s.username}${s.father ? " · Father: " + s.father : ""}`;
       const d = document.createElement("div"); d.className = "detail"; d.hidden = true;
       b.onclick = async () => { d.hidden = !d.hidden; if (!d.hidden && !d.dataset.ok) await studentDetail(d, s, loadList); };
       l.appendChild(b); l.appendChild(d);
