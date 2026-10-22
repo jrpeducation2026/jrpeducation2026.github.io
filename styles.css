@@ -351,3 +351,8 @@ main.chatmain .in{padding-bottom:150px}
 .top{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
 .top li span{margin-right:6px}.top li b{color:var(--navy)}
 @media (max-width:360px){.kpis{grid-template-columns:repeat(2,1fr)}.quick,.qa{grid-template-columns:repeat(4,1fr)}.quick button,.qa button{font-size:11px}}
+
+/* behave like a native app: no text selection or long-press menu, except where people type */
+html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,textarea,select,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+img{-webkit-user-drag:none}
