@@ -205,6 +205,7 @@ VIEWS.login = () => {
       <p class="hint" id="hint">New student? Create an account and wait for approval.</p>
       <button type="button" class="btn btn-line" id="signup">Create student account</button>
     </form>
+    ${mockCard()}
     ${ytCard()}
   </div></main>`;
   LOGIN_MSG = "";
@@ -221,6 +222,7 @@ VIEWS.login = () => {
   const { segS, segT, h, ul, u, p, hint, err, f, signup } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
   segS.onclick = () => set("s"); segT.onclick = () => set("t");
   signup.onclick = () => go("signup");
+  wireMock();
   f.onsubmit = async e => {
     e.preventDefault(); err.hidden = true;
     if (!u.value.trim() || !p.value) { err.textContent = "Enter your username and password."; err.hidden = false; return; }
@@ -328,6 +330,7 @@ VIEWS.home = () => {
     <div class="list" id="notices" hidden></div>
     <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all</button></div>
     <div class="chs" id="series"></div>
+    ${mockCard()}
     <div class="sec-h"><h2>Select class</h2><span>6th to 12th</span></div>
     <div class="classes" id="cg"></div>
     <button class="banner" data-tab-go="board">
@@ -346,6 +349,7 @@ VIEWS.home = () => {
   });
   $app.querySelector("[data-tab-go]").onclick = () => resetTo("board");
   document.getElementById("allT").onclick = () => go("series");
+  wireMock();
   fillSeries(document.getElementById("series"), false);
   fillNotices(document.getElementById("notices"), false);
 };
@@ -725,6 +729,74 @@ async function fillNotices(box, all) {
 VIEWS.notices = () => {
   $app.innerHTML = header("Notices", "JRP Education", true) + `<main><div class="in"><div class="list" id="nl"></div></div></main>`;
   fillNotices(document.getElementById("nl"), true);
+};
+
+
+/* ----- free mock test (built in, no login needed) ----- */
+const MOCK = {
+  title: { English: "Free Mock Test", Hindi: "निःशुल्क मॉक टेस्ट" },
+  sub: "Class 10 · Mathematics", minutes: 15,
+  English: [
+    { chapter: "Real Numbers", q: "If HCF(a, b) = 6 and a × b = 432, then LCM(a, b) is:", opts: ["36", "72", "144", "2592"], ans: 1, sol: "HCF × LCM = a × b, so LCM = 432 ÷ 6 = 72." },
+    { chapter: "Polynomials", q: "The zeroes of the polynomial x² − 3x − 4 are:", opts: ["−4 and 1", "2 and −2", "4 and −1", "1 and 4"], ans: 2, sol: "x² − 3x − 4 = (x − 4)(x + 1), so the zeroes are 4 and −1." },
+    { chapter: "Pair of Linear Equations in Two Variables", q: "The solution of x + y = 10 and x − y = 2 is:", opts: ["x = 6, y = 4", "x = 4, y = 6", "x = 5, y = 5", "x = 8, y = 2"], ans: 0, sol: "Adding both equations gives 2x = 12, so x = 6 and y = 10 − 6 = 4." },
+    { chapter: "Quadratic Equations", q: "The roots of 2x² − 4x + 3 = 0 are:", opts: ["Two distinct real roots", "Two equal real roots", "No real roots", "Only one root"], ans: 2, sol: "D = b² − 4ac = 16 − 24 = −8. Since D < 0, there are no real roots." },
+    { chapter: "Arithmetic Progressions", q: "The 10th term of the AP 2, 7, 12, … is:", opts: ["45", "47", "50", "52"], ans: 1, sol: "aₙ = a + (n − 1)d = 2 + 9 × 5 = 47." },
+    { chapter: "Coordinate Geometry", q: "The distance between the points (2, 3) and (−4, −5) is:", opts: ["8", "√52", "14", "10"], ans: 3, sol: "√[(−4 − 2)² + (−5 − 3)²] = √(36 + 64) = √100 = 10." },
+    { chapter: "Introduction to Trigonometry", q: "If tan A = 3/4 (A is acute), then sin A is:", opts: ["4/5", "3/5", "3/4", "5/3"], ans: 1, sol: "Perpendicular = 3, base = 4, so hypotenuse = 5. sin A = 3/5." },
+    { chapter: "Circles", q: "From a point 13 cm from the centre, the length of the tangent to a circle of radius 5 cm is:", opts: ["12 cm", "8 cm", "18 cm", "√194 cm"], ans: 0, sol: "The tangent is perpendicular to the radius: √(13² − 5²) = √144 = 12 cm." },
+    { chapter: "Statistics", q: "If the median of a data is 22 and the mean is 20, then the mode is:", opts: ["24", "22", "18", "26"], ans: 3, sol: "Mode = 3 × Median − 2 × Mean = 66 − 40 = 26." },
+    { chapter: "Probability", q: "A die is thrown once. The probability of getting a prime number is:", opts: ["1/2", "1/3", "2/3", "1/6"], ans: 0, sol: "The prime numbers on a die are 2, 3 and 5, so the probability is 3/6 = 1/2." }
+  ],
+  Hindi: [
+    { chapter: "वास्तविक संख्याएँ", q: "यदि HCF(a, b) = 6 और a × b = 432 है, तो LCM(a, b) है:", opts: ["36", "72", "144", "2592"], ans: 1, sol: "HCF × LCM = a × b, अतः LCM = 432 ÷ 6 = 72।" },
+    { chapter: "बहुपद", q: "बहुपद x² − 3x − 4 के शून्यक हैं:", opts: ["−4 और 1", "2 और −2", "4 और −1", "1 और 4"], ans: 2, sol: "x² − 3x − 4 = (x − 4)(x + 1), अतः शून्यक 4 और −1 हैं।" },
+    { chapter: "दो चर वाले रैखिक समीकरण युग्म", q: "समीकरण युग्म x + y = 10 और x − y = 2 का हल है:", opts: ["x = 6, y = 4", "x = 4, y = 6", "x = 5, y = 5", "x = 8, y = 2"], ans: 0, sol: "दोनों समीकरणों को जोड़ने पर 2x = 12, अतः x = 6 और y = 10 − 6 = 4।" },
+    { chapter: "द्विघात समीकरण", q: "समीकरण 2x² − 4x + 3 = 0 के मूल हैं:", opts: ["दो भिन्न वास्तविक मूल", "दो बराबर वास्तविक मूल", "कोई वास्तविक मूल नहीं", "केवल एक मूल"], ans: 2, sol: "विविक्तकर D = b² − 4ac = 16 − 24 = −8। D < 0 है, अतः कोई वास्तविक मूल नहीं है।" },
+    { chapter: "समांतर श्रेढ़ियाँ", q: "समांतर श्रेढ़ी 2, 7, 12, … का 10वाँ पद है:", opts: ["45", "47", "50", "52"], ans: 1, sol: "aₙ = a + (n − 1)d = 2 + 9 × 5 = 47।" },
+    { chapter: "निर्देशांक ज्यामिति", q: "बिंदुओं (2, 3) और (−4, −5) के बीच की दूरी है:", opts: ["8", "√52", "14", "10"], ans: 3, sol: "√[(−4 − 2)² + (−5 − 3)²] = √(36 + 64) = √100 = 10।" },
+    { chapter: "त्रिकोणमिति का परिचय", q: "यदि tan A = 3/4 है (A न्यून कोण है), तो sin A का मान है:", opts: ["4/5", "3/5", "3/4", "5/3"], ans: 1, sol: "लंब = 3, आधार = 4, अतः कर्ण = 5। sin A = 3/5।" },
+    { chapter: "वृत्त", q: "केंद्र से 13 cm दूर स्थित बिंदु से 5 cm त्रिज्या वाले वृत्त पर खींची गई स्पर्श रेखा की लंबाई है:", opts: ["12 cm", "8 cm", "18 cm", "√194 cm"], ans: 0, sol: "स्पर्श रेखा त्रिज्या पर लंब होती है: √(13² − 5²) = √144 = 12 cm।" },
+    { chapter: "सांख्यिकी", q: "यदि किसी आँकड़े का माध्यक 22 और माध्य 20 है, तो बहुलक है:", opts: ["24", "22", "18", "26"], ans: 3, sol: "बहुलक = 3 × माध्यक − 2 × माध्य = 66 − 40 = 26।" },
+    { chapter: "प्रायिकता", q: "एक पासे को एक बार फेंका जाता है। अभाज्य संख्या आने की प्रायिकता है:", opts: ["1/2", "1/3", "2/3", "1/6"], ans: 0, sol: "पासे पर अभाज्य संख्याएँ 2, 3 और 5 हैं, अतः प्रायिकता = 3/6 = 1/2।" }
+  ]
+};
+const mockCard = () => `<button class="banner mock" data-mock>
+  <div class="ic">10</div><div style="flex:1;min-width:0"><h3>Free Mock Test</h3><p>Class 10 Maths · 10 MCQs · English & Hindi medium</p></div></button>`;
+function wireMock() { $app.querySelectorAll("[data-mock]").forEach(b => b.onclick = () => go("mock")); }
+VIEWS.mock = ({ medium } = {}) => {
+  const med = medium || (S.profile ? myMed() : "English");
+  const qs = MOCK[med];
+  $app.innerHTML = header(MOCK.title[med], MOCK.sub, true) + `
+  <main><div class="in">
+    <div class="card">
+      <div class="qtag">Free · No login needed</div>
+      <h1 style="font-size:24px">${esc(MOCK.title[med])}</h1>
+      <div class="field"><label for="mm">Medium</label><select id="mm">${medOptions(med)}</select></div>
+      <div class="stats three"><div><b>${qs.length}</b><span>Questions</span></div><div><b>${MOCK.minutes}</b><span>Minutes</span></div><div><b>${qs.length * MARK_RIGHT}</b><span>Max marks</span></div></div>
+      <ul class="hint" style="margin:0;padding-left:20px;font-size:15px;display:flex;flex-direction:column;gap:4px">
+        <li>+${MARK_RIGHT} for a correct answer, −${MARK_WRONG} for a wrong answer, 0 if skipped.</li>
+        <li>Questions from the full Class 10 Maths syllabus.</li>
+        <li>You will see the correct answers and solutions at the end.</li>
+      </ul>
+      <button class="btn btn-navy" id="go">Start mock test</button>
+    </div>
+  </div></main>`;
+  document.getElementById("mm").onchange = e => { current.args = { medium: e.target.value }; render(); };
+  document.getElementById("go").onclick = () => {
+    const t0 = Date.now();
+    runTest({ qs, startMs: t0, deadlineMs: t0 + MOCK.minutes * 60000, tag: q => q.chapter,
+      onFinish: ({ ans, timeSec, auto }) => {
+        const rec = { subject: "Mathematics", cls: 10, chapter: MOCK.title[med], ...scoreOf(qs, ans), timeSec };
+        showResult({ rec, qs, ans, auto, saved: true });
+        if (!S.user) {
+          const cta = document.createElement("div"); cta.className = "card";
+          cta.innerHTML = `<h3 style="font-size:18px">Want more tests like this?</h3><p>Create a free student account to get chapter tests, test series and your rank.</p><button class="btn btn-gold" id="cta">Create student account</button>`;
+          document.querySelector("main .in").insertBefore(cta, document.querySelector("main .in").children[1]);
+          document.getElementById("cta").onclick = () => go("signup", {}, { replace: true });
+        }
+      } });
+  };
 };
 
 /* ----- student: results, rank, profile ----- */

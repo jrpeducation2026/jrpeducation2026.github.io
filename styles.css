@@ -214,3 +214,5 @@ main .in{display:flex;flex-direction:column;gap:16px;padding-block:18px 110px}
 .yt-t b{font-size:16px}
 .yt-t small{font-size:13px;color:var(--muted)}
 .yt-go{font-weight:700;font-size:14px;color:#c4190f}
+.banner.mock{background:var(--navy)}
+.banner.mock .ic{background:var(--gold);color:var(--navy)}
