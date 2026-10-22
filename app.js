@@ -16,6 +16,7 @@ const db = getFirestore(app);
 // second instance so the teacher stays signed in while creating student accounts
 const app2 = initializeApp(firebaseConfig, "secondary");
 const auth2 = initializeAuth(app2, { persistence: inMemoryPersistence });
+const db2 = getFirestore(app2);
 
 // teacher account is identified by a hash so the official email is not shown in the app's code
 const ADMIN_HASH = "4350f11b33b0b686dafc573981e8d6fb067f8b092816e47c0c18958003679c36";
@@ -29,8 +30,12 @@ const CLASSES = [6, 7, 8, 9, 10, 11, 12];
 const SUBJECTS_LOWER = ["Mathematics", "Science", "English", "Hindi", "Social Science", "Sanskrit"];
 const SUBJECTS_UPPER = ["Physics", "Chemistry", "Mathematics", "Biology", "English", "Hindi"];
 const GLYPH = { Mathematics: "∑", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
+const MEDIUMS = ["English", "Hindi"];
 const DEFAULT_SYLLABUS = {
-  "10|Mathematics": ["Real Numbers", "Polynomials", "Pair of Linear Equations in Two Variables", "Quadratic Equations",
+  "10|Mathematics|Hindi": ["वास्तविक संख्याएँ", "बहुपद", "दो चर वाले रैखिक समीकरण युग्म", "द्विघात समीकरण", "समांतर श्रेढ़ियाँ", "त्रिभुज",
+    "निर्देशांक ज्यामिति", "त्रिकोणमिति का परिचय", "त्रिकोणमिति के कुछ अनुप्रयोग", "वृत्त", "वृत्तों से संबंधित क्षेत्रफल",
+    "पृष्ठीय क्षेत्रफल और आयतन", "सांख्यिकी", "प्रायिकता"],
+  "10|Mathematics|English": ["Real Numbers", "Polynomials", "Pair of Linear Equations in Two Variables", "Quadratic Equations",
     "Arithmetic Progressions", "Triangles", "Coordinate Geometry", "Introduction to Trigonometry",
     "Some Applications of Trigonometry", "Circles", "Areas Related to Circles", "Surface Areas and Volumes",
     "Statistics", "Probability"]
@@ -46,7 +51,11 @@ const $nav = document.getElementById("nav");
 /* ---------- helpers ---------- */
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const subjectsFor = c => (c >= 11 ? SUBJECTS_UPPER : SUBJECTS_LOWER);
-const sylKey = (c, s) => `${c}|${s}`;
+const sylKey = (c, s, m = "English") => `${c}|${s}|${m}`;
+const medOf = x => (x && x.medium) || "English";
+const myMed = () => medOf(S.profile);
+const sylDocId = (c, s, m = "English") => m === "English" ? `${c}_${s}` : `${c}_${s}_${m}`;
+const medOptions = sel => MEDIUMS.map(m => `<option ${m === sel ? "selected" : ""}>${m}</option>`).join("");
 const testKey = (c, s, ch) => `${c}|${s}|${ch}`;
 const fmtTime = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 const initials = n => String(n || "?").trim().split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
@@ -102,11 +111,11 @@ $nav.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); 
 $app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); });
 
 /* ---------- data ---------- */
-async function getSyllabus(c, s) {
-  const k = sylKey(c, s);
+async function getSyllabus(c, s, m = "English") {
+  const k = sylKey(c, s, m);
   if (S.syllabus[k]) return S.syllabus[k];
   let list = DEFAULT_SYLLABUS[k] || [];
-  try { const d = await getDoc(doc(db, "syllabus", `${c}_${s}`)); if (d.exists() && Array.isArray(d.data().chapters) && d.data().chapters.length) list = d.data().chapters; } catch (e) {}
+  try { const d = await getDoc(doc(db, "syllabus", sylDocId(c, s, m))); if (d.exists() && Array.isArray(d.data().chapters) && d.data().chapters.length) list = d.data().chapters; } catch (e) {}
   S.syllabus[k] = list; return list;
 }
 async function loadMyResults(force) {
@@ -129,6 +138,7 @@ onAuthStateChanged(auth, async user => {
       S.admin = true; resetTo("teacher"); return;
     }
     const p = await getDoc(doc(db, "users", user.uid));
+    if (p.exists() && p.data().status === "pending") { S.profile = { id: user.uid, ...p.data() }; resetTo("pending"); return; }
     if (!p.exists() || p.data().active === false) {
       await signOut(auth);
       LOGIN_MSG = "This account is not active. Please contact JRP Education.";
@@ -158,7 +168,8 @@ VIEWS.login = () => {
       <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" placeholder="Password"></div>
       <div class="err" id="err" ${LOGIN_MSG ? "" : "hidden"}>${esc(LOGIN_MSG)}</div>
       <button class="btn btn-navy" id="go" type="submit">Log in</button>
-      <p class="hint" id="hint">Your username and password are provided by your teacher.</p>
+      <p class="hint" id="hint">New student? Create an account and wait for approval.</p>
+      <button type="button" class="btn btn-line" id="signup">Create student account</button>
     </form>
   </div></main>`;
   LOGIN_MSG = "";
@@ -169,16 +180,86 @@ VIEWS.login = () => {
     ul.textContent = r === "s" ? "Username" : "Email";
     u.placeholder = r === "s" ? "e.g. rahul10" : "Teacher email";
     u.type = r === "s" ? "text" : "email";
-    hint.textContent = r === "s" ? "Your username and password are provided by your teacher." : "For JRP Education staff only.";
+    hint.textContent = r === "s" ? "New student? Create an account and wait for approval." : "For JRP Education staff only.";
+    signup.hidden = r !== "s";
   };
-  const { segS, segT, h, ul, u, p, hint, err, f } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
+  const { segS, segT, h, ul, u, p, hint, err, f, signup } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
   segS.onclick = () => set("s"); segT.onclick = () => set("t");
+  signup.onclick = () => go("signup");
   f.onsubmit = async e => {
     e.preventDefault(); err.hidden = true;
     if (!u.value.trim() || !p.value) { err.textContent = "Enter your username and password."; err.hidden = false; return; }
     const btn = document.getElementById("go"); btn.disabled = true; btn.textContent = "Logging in…";
     try { await signInWithEmailAndPassword(auth, usernameToEmail(u.value), p.value); }
     catch (x) { err.textContent = errText(x); err.hidden = false; btn.disabled = false; btn.textContent = "Log in"; }
+  };
+};
+
+VIEWS.signup = () => {
+  $app.innerHTML = header("Create account", "JRP Education", true) + `
+  <main><div class="in">
+    <form class="card" id="f" novalidate>
+      <h2 style="font-size:20px">Student details</h2>
+      <div class="field"><label for="a1">Full name</label><input id="a1" type="text" autocomplete="name" placeholder="Your name"></div>
+      <div class="two"><div class="field"><label for="a2">Class</label><select id="a2">${classOptions(10)}</select></div>
+      <div class="field"><label for="a3">Medium</label><select id="a3">${medOptions("English")}</select></div></div>
+      <div class="field"><label for="a4">Mobile</label><input id="a4" type="tel" inputmode="numeric" maxlength="10" placeholder="10-digit number"></div>
+      <div class="field"><label for="a5">Father's name</label><input id="a5" type="text"></div>
+      <div class="field"><label for="a6">School (optional)</label><input id="a6" type="text"></div>
+      <h2 style="font-size:20px;margin-top:6px">Login details</h2>
+      <div class="field"><label for="a7">Username</label><input id="a7" type="text" autocapitalize="none" autocomplete="username" placeholder="Letters and numbers, e.g. rahul10"></div>
+      <div class="two"><div class="field"><label for="a8">Password</label><input id="a8" type="password" autocomplete="new-password" placeholder="Min 6 characters"></div>
+      <div class="field"><label for="a9">Confirm</label><input id="a9" type="password" autocomplete="new-password"></div></div>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" type="submit" id="go">Create account</button>
+      <p class="hint">Your teacher will approve your account before you can take tests.</p>
+    </form>
+  </div></main>`;
+  const $ = id => document.getElementById(id);
+  $("a1").oninput = () => { if (!$("a7").dataset.t) $("a7").value = slug($("a1").value.split(" ")[0] || "") + $("a2").value; };
+  $("a7").oninput = () => $("a7").dataset.t = "1";
+  $("f").onsubmit = async e => {
+    e.preventDefault(); const err = $("err"); err.hidden = true;
+    const fail = m => { err.textContent = m; err.hidden = false; };
+    const name = $("a1").value.trim(), cls = Number($("a2").value), medium = $("a3").value, mobile = $("a4").value.trim();
+    const username = slug($("a7").value), password = $("a8").value;
+    if (!name) return fail("Enter your name.");
+    if (!/^\d{10}$/.test(mobile)) return fail("Enter a 10-digit mobile number.");
+    if (username.length < 3) return fail("Username needs at least 3 letters or numbers.");
+    if (password.length < 6) return fail("Password must be at least 6 characters.");
+    if (password !== $("a9").value) return fail("Passwords do not match.");
+    $("go").disabled = true; $("go").textContent = "Creating…";
+    try {
+      const c = await createUserWithEmailAndPassword(auth2, usernameToEmail(username), password);
+      const uid = c.user.uid;
+      await setDoc(doc(db2, "users", uid), { name, cls, medium, mobile, father: $("a5").value.trim(), school: $("a6").value.trim(), username,
+        role: "student", active: false, status: "pending", selfSignup: true, createdAt: serverTimestamp() });
+      await setDoc(doc(db2, "secrets", uid), { username, password });
+      await signOut(auth2);
+      await signInWithEmailAndPassword(auth, usernameToEmail(username), password);
+    } catch (x) { fail(errText(x)); $("go").disabled = false; $("go").textContent = "Create account"; try { await signOut(auth2); } catch (e) {} }
+  };
+};
+
+VIEWS.pending = () => {
+  const p = S.profile;
+  $app.innerHTML = header("Account pending", "JRP Education") + `
+  <main><div class="in">
+    <div class="card">
+      <h2 style="font-size:21px">Waiting for approval</h2>
+      <p>Thank you, ${esc(p.name)}. Your account (<b>${esc(p.username)}</b>) has been sent to JRP Education. You can start taking tests once your teacher approves it.</p>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" id="chk">Check again</button>
+      <button class="btn btn-line" id="out">Log out</button>
+    </div>
+  </div></main>`;
+  document.getElementById("out").onclick = () => signOut(auth);
+  document.getElementById("chk").onclick = async () => {
+    const d = await getDoc(doc(db, "users", S.user.uid)).catch(() => null);
+    const v = d && d.exists() ? d.data() : null;
+    if (v && v.active !== false && v.status !== "pending") { S.profile = { id: S.user.uid, ...v }; resetTo("home"); }
+    else if (v && v.status === "rejected") { LOGIN_MSG = "Your account request was not approved. Please contact JRP Education."; signOut(auth); }
+    else { const e = document.getElementById("err"); e.textContent = "Not approved yet. Please check again later."; e.hidden = false; }
   };
 };
 
@@ -206,7 +287,7 @@ VIEWS.home = () => {
   <main><div class="in">
     <div class="card lift">
       <h1 style="font-size:22px">Welcome, ${esc((p.name || "").split(" ")[0])}</h1>
-      <p class="hint" style="font-size:15px">Class ${esc(p.cls)} · Select a class to see subjects and tests.</p>
+      <p class="hint" style="font-size:15px">Class ${esc(p.cls)} · ${myMed()} medium · Select a class to see subjects and tests.</p>
     </div>
     <button class="banner live" id="liveAlert" hidden></button>
     <div class="list" id="notices" hidden></div>
@@ -237,7 +318,7 @@ VIEWS.subjects = async ({ cls }) => {
   $app.innerHTML = header(`Class ${cls}`, "Select subject", true) + `<main><div class="in"><div class="subjects" id="sg"></div></div></main>`;
   const sg = document.getElementById("sg");
   const subs = subjectsFor(cls);
-  const lists = await Promise.all(subs.map(s => getSyllabus(cls, s)));
+  const lists = await Promise.all(subs.map(s => getSyllabus(cls, s, myMed())));
   subs.forEach((s, i) => {
     const n = lists[i].length;
     const b = document.createElement("button");
@@ -250,7 +331,7 @@ VIEWS.subjects = async ({ cls }) => {
 
 VIEWS.chapters = async ({ cls, subject }) => {
   $app.innerHTML = header(subject, `Class ${cls} · Chapter-wise`, true) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
-  const [chs, mine] = await Promise.all([getSyllabus(cls, subject), loadMyResults().catch(() => [])]);
+  const [chs, mine] = await Promise.all([getSyllabus(cls, subject, myMed()), loadMyResults().catch(() => [])]);
   const best = {};
   mine.forEach(r => { if (!best[r.testKey] || r.score > best[r.testKey].score) best[r.testKey] = r; });
   const fb = best[testKey(cls, subject, FULL)];
@@ -296,7 +377,7 @@ VIEWS.test = async ({ cls, subject, chapter }) => {
     const cons = [where("cls", "==", Number(cls)), where("subject", "==", subject)];
     if (chapter !== FULL) cons.push(where("chapter", "==", chapter));
     const snap = await getDocs(query(collection(db, "questions"), ...cons));
-    qs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    qs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(q => medOf(q) === myMed());
   } catch (e) { $app.innerHTML = header(chapter, subject, true) + `<main><div class="in"><div class="err">${esc(errText(e))}</div></div></main>`; return; }
   if (!qs.length) {
     $app.innerHTML = header(chapter, `Class ${cls} · ${subject}`, true) + `<main><div class="in"><div class="empty"><h3>Questions coming soon</h3><p>Your teacher has not added questions for this test yet.</p></div></div></main>`;
@@ -326,7 +407,7 @@ VIEWS.test = async ({ cls, subject, chapter }) => {
       tag: q => chapter === FULL ? q.chapter : `${subject} · Class ${cls}`,
       onFinish: async ({ ans, timeSec, auto }) => {
         const sc = scoreOf(qs, ans);
-        const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls),
+        const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls), studentMedium: myMed(),
           cls: Number(cls), subject, chapter, testKey: testKey(cls, subject, chapter), ...sc, timeSec, atMs: Date.now(), at: serverTimestamp() };
         loading("Saving your result…");
         let saved = true;
@@ -452,7 +533,7 @@ const tStatus = t => { const n = Date.now(); return n < t.startMs ? "up" : n < t
 const fmtDT = ms => new Date(ms).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 async function loadTests(cls) {
   const snap = await getDocs(query(collection(db, "tests"), where("cls", "==", Number(cls))));
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.startMs - b.startMs);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => !S.profile || medOf(t) === myMed()).sort((a, b) => a.startMs - b.startMs);
 }
 function seriesItem(t, done, isNew) {
   const st = tStatus(t);
@@ -553,7 +634,7 @@ VIEWS.stest = async ({ id }) => {
 };
 async function submitSeries(t, qs, ans, timeSec, auto) {
   loading("Submitting your answers…");
-  const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls),
+  const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls), studentMedium: myMed(),
     cls: Number(t.cls), subject: t.subject, chapter: t.title, testKey: "T|" + t.id, testId: t.id, endMs: t.endMs,
     ...scoreOf(qs, ans), answers: ans.map(a => a ?? -1), timeSec, atMs: Date.now(), at: serverTimestamp() };
   try {
@@ -660,9 +741,9 @@ function drawBoard(el, rs, key, meUid) {
 }
 VIEWS.board = async () => {
   const c = Number(S.profile.cls);
-  $app.innerHTML = header("Leaderboard", `Class ${c}`) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  $app.innerHTML = header("Leaderboard", `Class ${c} · ${myMed()} medium`) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
   let rs = [];
-  try { rs = (await getDocs(query(collection(db, "results"), where("studentCls", "==", c)))).docs.map(d => d.data()).filter(r => !r.endMs || r.endMs <= Date.now()); }
+  try { rs = (await getDocs(query(collection(db, "results"), where("studentCls", "==", c)))).docs.map(d => d.data()).filter(r => (!r.endMs || r.endMs <= Date.now()) && (r.studentMedium || "English") === myMed()); }
   catch (e) { document.getElementById("in").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
   const tests = [...new Set(rs.map(r => r.testKey))];
   const box = document.getElementById("in");
@@ -674,7 +755,7 @@ VIEWS.board = async () => {
 
 VIEWS.profile = () => {
   const p = S.profile;
-  const rows = [["Name", p.name], ["Username", p.username], ["Class", p.cls + "th"], ["Mobile", p.mobile], ["Father's name", p.father], ["School", p.school]].filter(r => r[1]);
+  const rows = [["Name", p.name], ["Username", p.username], ["Class", p.cls + "th"], ["Medium", myMed()], ["Mobile", p.mobile], ["Father's name", p.father], ["School", p.school]].filter(r => r[1]);
   $app.innerHTML = header("Profile", "JRP Education") + `
   <main><div class="in">
     <div class="card"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="width:52px;height:52px;font-size:18px">${esc(initials(p.name))}</div><div><h2 style="font-size:20px">${esc(p.name)}</h2><p class="hint">Student · Class ${esc(p.cls)}</p></div></div>
@@ -720,12 +801,14 @@ const slug = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
 async function tabStudents(pane) {
   pane.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:12px">
+    <div id="req"></div>
     <button class="btn btn-gold" id="add">+ Add student</button>
     <form class="card" id="f" hidden novalidate>
       <h3 style="font-size:18px">New student</h3>
       <div class="field"><label for="sn">Full name</label><input id="sn" type="text" placeholder="Student name"></div>
       <div class="two"><div class="field"><label for="sc">Class</label><select id="sc">${classOptions(10)}</select></div>
       <div class="field"><label for="sm">Mobile</label><input id="sm" type="tel" inputmode="numeric" placeholder="10-digit number"></div></div>
+      <div class="field"><label for="smd">Medium</label><select id="smd">${medOptions("English")}</select></div>
       <div class="field"><label for="sf">Father's name</label><input id="sf" type="text"></div>
       <div class="field"><label for="ss">School (optional)</label><input id="ss" type="text"></div>
       <div class="two"><div class="field"><label for="su">Username</label><input id="su" type="text" autocapitalize="none" placeholder="Auto"></div>
@@ -752,7 +835,7 @@ async function tabStudents(pane) {
       const c = await createUserWithEmailAndPassword(auth2, usernameToEmail(username), password);
       const uid = c.user.uid; await signOut(auth2);
       const b = writeBatch(db);
-      b.set(doc(db, "users", uid), { name, cls, username, mobile: $("sm").value.trim(), father: $("sf").value.trim(), school: $("ss").value.trim(), role: "student", active: true, createdAt: serverTimestamp() });
+      b.set(doc(db, "users", uid), { name, cls, medium: $("smd").value, username, mobile: $("sm").value.trim(), father: $("sf").value.trim(), school: $("ss").value.trim(), role: "student", active: true, status: "approved", createdAt: serverTimestamp() });
       b.set(doc(db, "secrets", uid), { username, password });
       await b.commit();
       $("done").innerHTML = `Student added. Share these login details:<br><b>Username:</b> ${esc(username)}<br><b>Password:</b> ${esc(password)}`;
@@ -765,7 +848,26 @@ async function tabStudents(pane) {
   async function loadList() {
     try { all = (await getDocs(collection(db, "users"))).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name)); }
     catch (e) { $("l").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+    drawRequests(all.filter(x => x.status === "pending"));
+    all = all.filter(x => x.status !== "pending" && x.status !== "rejected");
     draw();
+  }
+  function drawRequests(rq) {
+    const box = $("req"); box.innerHTML = "";
+    if (!rq.length) return;
+    box.innerHTML = `<div class="card" style="border-color:var(--gold)"><div class="sec-h"><h2 style="font-size:18px">New requests</h2><span>${rq.length}</span></div><div class="list" data-l></div></div>`;
+    const l = box.querySelector("[data-l]");
+    rq.forEach(s => {
+      const d = document.createElement("div"); d.className = "detail"; d.style.marginTop = "0";
+      d.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><div class="av">${esc(initials(s.name))}</div><div class="mid" style="flex:1;min-width:0"><b></b><br><span class="hint"></span></div></div>
+        <div class="row"><button class="btn btn-navy" data-a="ok">Approve</button><button class="btn btn-danger" data-a="no">Reject</button></div>`;
+      d.querySelector(".mid b").textContent = s.name;
+      d.querySelector(".mid span").textContent = `Class ${s.cls} · ${medOf(s)} · ${s.username} · ${s.mobile || ""}${s.father ? " · Father: " + s.father : ""}`;
+      d.querySelector('[data-a="ok"]').onclick = async () => { try { await updateDoc(doc(db, "users", s.id), { status: "approved", active: true }); toast(`${s.name} approved`); loadList(); } catch (x) { toast(errText(x)); } };
+      const no = d.querySelector('[data-a="no"]');
+      no.onclick = async () => { if (no.dataset.c !== "1") { no.dataset.c = "1"; no.textContent = "Tap again"; return; } try { await updateDoc(doc(db, "users", s.id), { status: "rejected", active: false }); toast("Request rejected"); loadList(); } catch (x) { toast(errText(x)); } };
+      l.appendChild(d);
+    });
   }
   function draw() {
     const fc = $("fc").value, fq = $("fq").value.trim().toLowerCase();
@@ -775,7 +877,7 @@ async function tabStudents(pane) {
     rows.forEach(s => {
       const b = document.createElement("button"); b.className = "item";
       b.innerHTML = `<div class="av">${esc(initials(s.name))}</div><div class="mid"><b></b><span></span></div><div class="end"><small>${s.active === false ? "Inactive" : ""}</small></div>`;
-      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `Class ${s.cls} · ${s.username}`;
+      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `Class ${s.cls} · ${medOf(s)} · ${s.username}`;
       const d = document.createElement("div"); d.className = "detail"; d.hidden = true;
       b.onclick = async () => { d.hidden = !d.hidden; if (!d.hidden && !d.dataset.ok) await studentDetail(d, s, loadList); };
       l.appendChild(b); l.appendChild(d);
@@ -791,7 +893,7 @@ async function studentDetail(d, s, reload) {
   try { rs = (await getDocs(query(collection(db, "results"), where("uid", "==", s.id)))).docs.map(x => x.data()); } catch (e) {}
   const avg = rs.length ? Math.round(rs.reduce((a, r) => a + Math.max(0, r.score) / r.max, 0) / rs.length * 100) + "%" : "–";
   d.dataset.ok = "1";
-  d.innerHTML = [["Username", s.username], ["Password", sec.password || "–"], ["Mobile", s.mobile || "–"], ["Father's name", s.father || "–"], ["School", s.school || "–"], ["Tests taken", rs.length], ["Average", avg]]
+  d.innerHTML = [["Medium", medOf(s)], ["Username", s.username], ["Password", sec.password || "–"], ["Mobile", s.mobile || "–"], ["Father's name", s.father || "–"], ["School", s.school || "–"], ["Tests taken", rs.length], ["Average", avg]]
     .map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("") +
     `<div class="row"><button class="btn btn-line" data-a="pw">Reset password</button><button class="btn ${s.active === false ? "btn-line" : "btn-danger"}" data-a="ac">${s.active === false ? "Activate" : "Deactivate"}</button></div><div class="hint" data-msg></div>`;
   const msg = d.querySelector("[data-msg]");
@@ -866,6 +968,7 @@ function parseBulk(txt) {
 async function tabQuestions(pane) {
   pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
     <div class="filters"><div class="field"><label for="qc">Class</label><select id="qc">${classOptions(10)}</select></div><div class="field"><label for="qsj">Subject</label><select id="qsj"></select></div></div>
+    <div class="field"><label for="qm">Medium</label><select id="qm">${medOptions("English")}</select></div>
     <div class="field"><label for="qch">Chapter</label><select id="qch"></select></div>
     <div class="row"><button class="btn btn-gold" id="one">+ Add question</button><button class="btn btn-line" id="bulk">Paste many</button></div>
     <form class="card" id="f1" hidden novalidate>
@@ -894,16 +997,16 @@ Sol: 2 + 3 = 5</pre>
   const $ = id => document.getElementById(id);
   const fillSubj = () => { $("qsj").innerHTML = subjectOptions($("qc").value, $("qsj").value); };
   const fillCh = async () => {
-    const chs = await getSyllabus(Number($("qc").value), $("qsj").value);
+    const chs = await getSyllabus(Number($("qc").value), $("qsj").value, $("qm").value);
     $("qch").innerHTML = chs.length ? chs.map(c => `<option>${esc(c)}</option>`).join("") : `<option value="">Add chapters in Syllabus & Notes first</option>`;
     loadQ();
   };
   fillSubj(); await fillCh();
   $("qc").onchange = async () => { fillSubj(); await fillCh(); };
-  $("qsj").onchange = fillCh; $("qch").onchange = loadQ;
+  $("qsj").onchange = fillCh; $("qm").onchange = fillCh; $("qch").onchange = loadQ;
   $("one").onclick = () => { $("f1").hidden = !$("f1").hidden; $("f2").hidden = true; };
   $("bulk").onclick = () => { $("f2").hidden = !$("f2").hidden; $("f1").hidden = true; };
-  const base = () => ({ cls: Number($("qc").value), subject: $("qsj").value, chapter: $("qch").value });
+  const base = () => ({ cls: Number($("qc").value), subject: $("qsj").value, chapter: $("qch").value, medium: $("qm").value });
   $("f1").onsubmit = async e => {
     e.preventDefault(); $("e1").hidden = true;
     if (!$("qch").value) { $("e1").textContent = "Select a chapter first."; $("e1").hidden = false; return; }
@@ -928,7 +1031,7 @@ Sol: 2 + 3 = 5</pre>
     if (!$("qch").value) { l.innerHTML = ""; $("qn").textContent = ""; return; }
     l.innerHTML = `<div class="spin"></div>`;
     let qs = [];
-    try { qs = (await getDocs(query(collection(db, "questions"), where("cls", "==", Number($("qc").value)), where("subject", "==", $("qsj").value), where("chapter", "==", $("qch").value)))).docs.map(d => ({ id: d.id, ...d.data() })); }
+    try { qs = (await getDocs(query(collection(db, "questions"), where("cls", "==", Number($("qc").value)), where("subject", "==", $("qsj").value), where("chapter", "==", $("qch").value)))).docs.map(d => ({ id: d.id, ...d.data() })).filter(q => medOf(q) === $("qm").value); }
     catch (x) { l.innerHTML = `<div class="err">${esc(errText(x))}</div>`; return; }
     $("qn").textContent = qs.length + (qs.length < CHAPTER_Q ? ` (add ${CHAPTER_Q - qs.length}+ more)` : "");
     l.innerHTML = "";
@@ -951,6 +1054,7 @@ Sol: 2 + 3 = 5</pre>
 async function tabSyllabus(pane) {
   pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
     <div class="filters"><div class="field"><label for="yc">Class</label><select id="yc">${classOptions(10)}</select></div><div class="field"><label for="ys">Subject</label><select id="ys"></select></div></div>
+    <div class="field"><label for="ym">Medium</label><select id="ym">${medOptions("English")}</select></div>
     <form class="card" id="f1" novalidate>
       <h3 style="font-size:18px">Chapters</h3>
       <p class="hint">One chapter per line, in order. A subject shows as "Coming soon" until it has chapters.</p>
@@ -966,9 +1070,9 @@ async function tabSyllabus(pane) {
   const $ = id => document.getElementById(id);
   const fillSubj = () => { $("ys").innerHTML = subjectOptions($("yc").value, $("ys").value); };
   const load = async () => {
-    const c = Number($("yc").value), s = $("ys").value;
-    delete S.syllabus[sylKey(c, s)];
-    const chs = await getSyllabus(c, s);
+    const c = Number($("yc").value), s = $("ys").value, m = $("ym").value;
+    delete S.syllabus[sylKey(c, s, m)];
+    const chs = await getSyllabus(c, s, m);
     $("yl").value = chs.join("\n");
     $("nc").innerHTML = chs.map(x => `<option>${esc(x)}</option>`).join("");
     loadNote();
@@ -980,11 +1084,11 @@ async function tabSyllabus(pane) {
   };
   fillSubj(); await load();
   $("yc").onchange = async () => { fillSubj(); await load(); };
-  $("ys").onchange = load; $("nc").onchange = loadNote;
+  $("ys").onchange = load; $("ym").onchange = load; $("nc").onchange = loadNote;
   $("f1").onsubmit = async e => {
     e.preventDefault();
     const chapters = $("yl").value.split("\n").map(x => x.trim()).filter(Boolean);
-    try { await setDoc(doc(db, "syllabus", `${$("yc").value}_${$("ys").value}`), { chapters }); toast("Chapters saved"); await load(); } catch (x) { toast(errText(x)); }
+    try { await setDoc(doc(db, "syllabus", sylDocId($("yc").value, $("ys").value, $("ym").value)), { chapters, medium: $("ym").value }); toast("Chapters saved"); await load(); } catch (x) { toast(errText(x)); }
   };
   $("f2").onsubmit = async e => {
     e.preventDefault();
@@ -1003,6 +1107,7 @@ async function tabSeries(pane) {
       <h3 style="font-size:18px">New scheduled test</h3>
       <div class="field"><label for="tt">Test name</label><input id="tt" type="text" placeholder="e.g. Weekly Test 1"></div>
       <div class="two"><div class="field"><label for="tc">Class</label><select id="tc">${classOptions(10)}</select></div><div class="field"><label for="tsb">Subject</label><select id="tsb"></select></div></div>
+      <div class="field"><label for="tm">Medium</label><select id="tm">${medOptions("English")}</select></div>
       <div class="field"><label>Chapters</label><div id="tch" class="chk"></div></div>
       <div class="two"><div class="field"><label for="tn">Questions</label><input id="tn" type="number" min="1" max="100" value="25"></div><div class="field"><label for="td">Duration (minutes)</label><input id="td" type="number" min="5" max="300" value="45"></div></div>
       <div class="field"><label for="ts1">Opens at</label><input id="ts1" type="datetime-local" value="${toLocalInput(tomorrow10)}"></div>
@@ -1016,17 +1121,17 @@ async function tabSeries(pane) {
   const $ = id => document.getElementById(id);
   const fillSubj = () => { $("tsb").innerHTML = subjectOptions($("tc").value, $("tsb").value); };
   const fillCh = async () => {
-    const chs = await getSyllabus(Number($("tc").value), $("tsb").value);
+    const chs = await getSyllabus(Number($("tc").value), $("tsb").value, $("tm").value);
     $("tch").innerHTML = chs.length ? `<label class="chk-row"><input type="checkbox" id="chAll" checked> <b>All chapters</b></label>` + chs.map((c, i) => `<label class="chk-row"><input type="checkbox" class="chx" value="${esc(c)}" checked> ${esc(c)}</label>`).join("") : `<p class="hint">No chapters yet. Add them in Syllabus & Notes.</p>`;
     const all = $("chAll"); if (all) all.onchange = () => $app.querySelectorAll(".chx").forEach(x => x.checked = all.checked);
   };
   fillSubj(); fillCh();
-  $("tc").onchange = () => { fillSubj(); fillCh(); }; $("tsb").onchange = fillCh;
+  $("tc").onchange = () => { fillSubj(); fillCh(); }; $("tsb").onchange = fillCh; $("tm").onchange = fillCh;
   $("new").onclick = () => $("f").hidden = !$("f").hidden;
   $("f").onsubmit = async e => {
     e.preventDefault(); const err = $("err"); err.hidden = true;
     const fail = m => { err.textContent = m; err.hidden = false; };
-    const title = $("tt").value.trim(), cls = Number($("tc").value), subject = $("tsb").value;
+    const title = $("tt").value.trim(), cls = Number($("tc").value), subject = $("tsb").value, medium = $("tm").value;
     const chapters = [...$app.querySelectorAll(".chx:checked")].map(x => x.value);
     const n = Number($("tn").value), dur = Number($("td").value);
     const startMs = new Date($("ts1").value).getTime(), endMs = new Date($("ts2").value).getTime();
@@ -1039,12 +1144,12 @@ async function tabSeries(pane) {
     $("save").disabled = true; $("save").textContent = "Picking questions…";
     try {
       const pool = (await getDocs(query(collection(db, "questions"), where("cls", "==", cls), where("subject", "==", subject)))).docs
-        .map(d => ({ id: d.id, ch: d.data().chapter })).filter(q => chapters.includes(q.ch));
+        .map(d => ({ id: d.id, ch: d.data().chapter, m: medOf(d.data()) })).filter(q => q.m === medium && chapters.includes(q.ch));
       if (pool.length < n) { fail(`Only ${pool.length} questions are available in the selected chapters. Add more questions or lower the number.`); }
       else {
         // spread questions across chapters in syllabus order
         const picked = shuffle(pool).slice(0, n).sort((a, b) => chapters.indexOf(a.ch) - chapters.indexOf(b.ch));
-        await addDoc(collection(db, "tests"), { title, cls, subject, chapters, qids: picked.map(q => q.id), durationMin: dur, startMs, endMs, createdAtMs: Date.now(), createdAt: serverTimestamp() });
+        await addDoc(collection(db, "tests"), { title, cls, subject, medium, chapters, qids: picked.map(q => q.id), durationMin: dur, startMs, endMs, createdAtMs: Date.now(), createdAt: serverTimestamp() });
         toast("Test scheduled"); $("f").hidden = true; $("tt").value = ""; loadList();
       }
     } catch (x) { fail(errText(x)); }
@@ -1063,7 +1168,7 @@ async function tabSeries(pane) {
       const b = document.createElement("button"); b.className = "item";
       b.innerHTML = `<div class="mid"><b></b><span></span></div><div class="end"><span class="chip ${st === "live" ? "live" : st === "up" ? "up" : "end"}">${st === "live" ? "Live" : st === "up" ? "Upcoming" : "Ended"}</span></div>`;
       b.querySelector(".mid b").textContent = t.title;
-      b.querySelector(".mid span").textContent = `Class ${t.cls} · ${t.subject} · ${fmtDT(t.startMs)} – ${fmtDT(t.endMs)} · ${t.qids.length} Q · ${t.durationMin} min`;
+      b.querySelector(".mid span").textContent = `Class ${t.cls} · ${medOf(t)} · ${t.subject} · ${fmtDT(t.startMs)} – ${fmtDT(t.endMs)} · ${t.qids.length} Q · ${t.durationMin} min`;
       const d = document.createElement("div"); d.className = "detail"; d.hidden = true;
       b.onclick = async () => { d.hidden = !d.hidden; if (!d.hidden) await seriesDetail(d, t, loadList); };
       l.appendChild(b); l.appendChild(d);
