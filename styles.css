@@ -262,3 +262,6 @@ main.chatmain .in{padding-bottom:150px}
 .grp-m{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#8a6300;background:var(--gold-soft);border-radius:8px;padding:4px 12px;align-self:flex-start}
 .av.sn{background:var(--bg);color:var(--navy);font-size:14px;font-variant-numeric:tabular-nums}
 .item .end.mob{font-family:var(--f-body);font-size:15px;font-weight:700;letter-spacing:.02em}
+.iostip{position:fixed;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:#fff;border-radius:14px;padding:12px 44px 12px 14px;font-size:14px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.iostip .sh{background:rgba(255,255,255,.15);border-radius:6px;padding:1px 6px}
+.iostip button{position:absolute;top:8px;right:8px;background:none;border:0;color:#fff;font-size:16px;width:30px;height:30px}

@@ -23,6 +23,7 @@
   <button data-tab="profile"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</button>
 </div></nav>
 <button class="install" id="installBtn" hidden>Install app</button>
+<div class="iostip" id="iosTip" hidden><p><b>Install on iPhone:</b> tap <span class="sh">Share ⬆</span> below, then <b>Add to Home Screen</b>.</p><button id="iosX" aria-label="Close">✕</button></div>
 <div class="toast" id="toast" hidden></div>
 <script type="module" src="app.js"></script>
 <script>
@@ -31,6 +32,10 @@ let deferredInstall=null;const ib=document.getElementById("installBtn");
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredInstall=e;if(!matchMedia("(display-mode: standalone)").matches)ib.hidden=false;});
 ib.onclick=async()=>{if(!deferredInstall)return;deferredInstall.prompt();await deferredInstall.userChoice;deferredInstall=null;ib.hidden=true;};
 window.addEventListener("appinstalled",()=>{ib.hidden=true;});
+// iPhone/iPad: Safari has no install prompt, so show how to add it to the home screen
+(function(){var ios=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+var standalone=window.navigator.standalone||matchMedia("(display-mode: standalone)").matches;var seen=false;try{seen=localStorage.getItem("jrp-ios-tip")==="1";}catch(e){}
+if(ios&&!standalone&&!seen){var t=document.getElementById("iosTip");t.hidden=false;document.getElementById("iosX").onclick=function(){t.hidden=true;try{localStorage.setItem("jrp-ios-tip","1");}catch(e){}};}})();
 </script>
 </body>
 </html>
