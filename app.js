@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where,
-  getDocs, orderBy, limit, serverTimestamp, writeBatch
+  getDocs, orderBy, limit, serverTimestamp, writeBatch, getCountFromServer
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { firebaseConfig } from "./firebase-config.js";
 
@@ -27,9 +27,9 @@ async function isTeacherEmail(email) {
 }
 const STUDENT_DOMAIN = "students.jrpeducation.app";
 const CLASSES = [6, 7, 8, 9, 10, 11, 12];
-const SUBJECTS_LOWER = ["Mathematics", "Science", "English", "Hindi", "Social Science", "Sanskrit"];
-const SUBJECTS_UPPER = ["Physics", "Chemistry", "Mathematics", "Biology", "English", "Hindi"];
-const GLYPH = { Mathematics: "∑", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
+const SUBJECTS_LOWER = ["Mathematics", "Vedic Maths", "Olympiad Maths", "Science", "English", "Hindi", "Social Science", "Sanskrit"];
+const SUBJECTS_UPPER = ["Mathematics", "Vedic Maths", "Olympiad Maths", "Physics", "Chemistry", "Biology", "English", "Hindi"];
+const GLYPH = { Mathematics: "∑", "Vedic Maths": "Ve", "Olympiad Maths": "Ol", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
 const MEDIUMS = ["English", "Hindi"];
 // Official NCERT Maths textbook codes (ncert.nic.in). Each part: [code, number of chapters]
 const NCERT_BOOKS = {
@@ -111,6 +111,7 @@ const L = "ABCD";
 const S = { user: null, profile: null, admin: false, myResults: null, syllabus: {} };
 const $app = document.getElementById("app");
 const $nav = document.getElementById("nav");
+const $tnav = document.getElementById("tnav");
 
 /* ---------- helpers ---------- */
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -166,22 +167,32 @@ window.addEventListener("popstate", () => {
 function render() {
   window.scrollTo(0, 0);
   const v = VIEWS[current.view];
-  const tabs = { home: "home", subjects: "home", chapters: "home", notes: "home", results: "results", board: "board", profile: "profile" };
+  const tabs = { home: "home", notices: "home", courses: "courses", subjects: "courses", chapters: "courses", notes: "courses", board10: "courses",
+    practice: "practice", daily: "practice", tests: "tests", results: "tests", board: "tests", series: "tests", profile: "profile" };
   $nav.hidden = !tabs[current.view];
   $nav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tabs[current.view] ? "page" : "false"));
+  const sec = current.view === "teacher" ? (current.args.sec || "dash") : "";
+  $tnav.hidden = !sec;
+  $tnav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.sec === sec ? "page" : "false"));
   v(current.args);
 }
 $nav.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) resetTo(b.dataset.tab); });
+$tnav.addEventListener("click", e => { const b = e.target.closest("[data-sec]"); if (b) resetTo("teacher", { sec: b.dataset.sec }); });
 $app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); });
 
 /* ---------- data ---------- */
+const VIDEOS = {};
 async function getSyllabus(c, s, m = "English") {
   const k = sylKey(c, s, m);
   if (S.syllabus[k]) return S.syllabus[k];
   let list = DEFAULT_SYLLABUS[k] || [];
-  try { const d = await getDoc(doc(db, "syllabus", sylDocId(c, s, m))); if (d.exists() && Array.isArray(d.data().chapters) && d.data().chapters.length) list = d.data().chapters; } catch (e) {}
+  try {
+    const d = await getDoc(doc(db, "syllabus", sylDocId(c, s, m)));
+    if (d.exists()) { const v = d.data(); if (Array.isArray(v.chapters) && v.chapters.length) list = v.chapters; VIDEOS[k] = v.videos || {}; }
+  } catch (e) {}
   S.syllabus[k] = list; return list;
 }
+const videoFor = (c, s, m, ch) => (VIDEOS[sylKey(c, s, m)] || {})[ch] || "";
 async function loadMyResults(force) {
   if (S.myResults && !force) return S.myResults;
   const snap = await getDocs(query(collection(db, "results"), where("uid", "==", S.user.uid)));
@@ -348,46 +359,251 @@ VIEWS.verify = () => {
 };
 
 /* ----- student: home ----- */
+/* icons for tiles and quick actions */
+const ICON = {
+  book: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M8 7h7M8 11h5"/>',
+  bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+  board: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+  notes: '<path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/>',
+  test: '<path d="M6 3h9l4 4v14H6z"/><path d="M9 12l2 2 4-4M9 17h6"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',
+  books: '<path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="M16 5l3.5-1 3 15-3.5 1z"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  user: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
+  megaphone: '<path d="M3 10v4h4l7 5V5L7 10z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
+  rupee: '<path d="M6 4h12M6 9h12M9 4c4 0 6 2 6 5s-2 5-6 5H6l8 7"/>',
+  spark: '<path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/>',
+  logout: '<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>',
+  chart: '<path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6"/>'
+};
+const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
+function appbar(right = "") {
+  return `<header class="appbar"><div class="in"><img src="${LOGO}" alt="" class="ab-logo"><div class="ab-t"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></div>${right}</div></header>`;
+}
+function ring(pct, size = 76) {
+  const r = (size - 10) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
+  return `<svg class="ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" class="ring-bg"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" class="ring-fg" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/><text x="50%" y="54%" text-anchor="middle" class="ring-t">${pct}%</text></svg>`;
+}
+// courses shown as tiles; each opens the chapter list of a subject for the student's class
+function courseList(cls) {
+  return [
+    { id: "maths", title: cls <= 10 ? "Foundation Maths" : "Mathematics", sub: `Class ${cls} · NCERT`, icon: "book", tone: "t-blue", subject: "Mathematics" },
+    { id: "vedic", title: "Vedic Maths", sub: "Tricks & Techniques", icon: "bolt", tone: "t-gold", subject: "Vedic Maths" },
+    { id: "olympiad", title: "Olympiad Maths", sub: "Puzzles & Challenges", icon: "trophy", tone: "t-green", subject: "Olympiad Maths" },
+    { id: "board", title: "RBSE Board", sub: "Notes & Questions", icon: "board", tone: "t-purple", view: "board10" }
+  ];
+}
+function courseTiles(box, cls) {
+  courseList(cls).forEach(c => {
+    const b = document.createElement("button"); b.className = "tile " + c.tone;
+    b.innerHTML = `<span class="ti">${svg(c.icon)}</span><b>${esc(c.title)}</b><small>${esc(c.sub)}</small>`;
+    b.onclick = async () => {
+      if (c.view) return go(c.view, { cls });
+      const chs = await getSyllabus(cls, c.subject, myMed());
+      chs.length ? go("chapters", { cls, subject: c.subject }) : toast(`${c.title} will be added soon.`);
+    };
+    box.appendChild(b);
+  });
+}
+async function learningProgress(cls) {
+  const [chs, mine] = await Promise.all([getSyllabus(cls, "Mathematics", myMed()), loadMyResults().catch(() => [])]);
+  const done = chs.filter(ch => mine.some(r => r.testKey === testKey(cls, "Mathematics", ch))).length;
+  return { done, total: chs.length, pct: chs.length ? Math.round(done / chs.length * 100) : 0 };
+}
+
 VIEWS.home = () => {
-  const p = S.profile;
-  $app.innerHTML = `
-  <div class="band"><div class="in"><div class="crest"><img src="${LOGO}" alt="JRP Education logo"></div></div></div>
+  const p = S.profile, cls = Number(p.cls), first = (p.name || "").split(" ")[0];
+  $app.innerHTML = appbar(`<button class="ab-bell" id="bell" aria-label="Notices">${svg("bell")}<i id="bdot" hidden></i></button>`) + `
   <main><div class="in">
-    <div class="card lift">
-      <h1 style="font-size:22px">Welcome, ${esc((p.name || "").split(" ")[0])}</h1>
-      <p class="hint" style="font-size:15px">Class ${esc(p.cls)} · ${myMed()} medium · Select a class to see subjects and tests.</p>
-    </div>
+    <div class="welcome"><div class="wl-av">${esc(initials(p.name))}</div><div class="wl-t"><small>Welcome back!</small><h1>${esc(first)}</h1><p>Class ${cls} · ${myMed()} medium · Keep learning, keep growing!</p></div></div>
+    <button class="progress card" id="prog"><span class="pr-ring">${ring(0)}</span><span class="pr-t"><small>Your learning progress</small><b id="prN">–/–</b><span>Maths chapters completed</span></span><span class="link">View details →</span></button>
     <button class="banner live" id="liveAlert" hidden></button>
     <div class="list" id="notices" hidden></div>
-    <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all</button></div>
+    <div class="sec-h"><h2>My Courses</h2><button class="link" id="allC">View all →</button></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="quick">
+      <button data-q="notes"><span class="qi q-orange">${svg("notes")}</span>Notes</button>
+      <button data-q="tests"><span class="qi q-green">${svg("test")}</span>Tests</button>
+      <button data-q="doubt"><span class="qi q-blue">${svg("help")}</span>Doubt Support</button>
+      <button data-q="books"><span class="qi q-red">${svg("books")}</span>Books</button>
+    </div>
+    <button class="banner challenge" id="daily"><span class="ic">${svg("target")}</span><div style="flex:1;min-width:0"><h3>Daily Maths Challenge</h3><p id="dailyT">Solve a new question every day!</p></div><span class="go">→</span></button>
+    <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all →</button></div>
     <div class="chs" id="series"></div>
-    <button class="banner narex" id="askN"><div class="ic">N</div><div style="flex:1;min-width:0"><h3>Ask NareX</h3><p>Your AI maths helper. Ask any doubt, get step-by-step help.</p></div></button>
-    ${mockCard()}
-    <div class="sec-h"><h2>Books</h2><span>Study material</span></div>
+    <div class="sec-h" id="booksH"><h2>Books</h2><span>Study material</span></div>
     <div class="list" id="books"></div>
-    <div class="sec-h"><h2>Select class</h2><span>6th to 12th</span></div>
-    <div class="classes" id="cg"></div>
-    <button class="banner" data-tab-go="board">
-      <div class="ic">★</div>
-      <div><h3>Leaderboard</h3><p>See where you rank among students of your class.</p></div>
-    </button>
     ${ytCard()}
   </div></main>`;
+  const $ = id => document.getElementById(id);
+  courseTiles($("tiles"), cls);
+  $("allC").onclick = () => resetTo("courses");
+  $("allT").onclick = () => go("series");
+  $("bell").onclick = () => go("notices");
+  $("daily").onclick = () => go("daily");
+  $("prog").onclick = () => go("chapters", { cls, subject: "Mathematics" });
+  $app.querySelector('[data-q="notes"]').onclick = () => go("chapters", { cls, subject: "Mathematics" });
+  $app.querySelector('[data-q="tests"]').onclick = () => resetTo("tests");
+  $app.querySelector('[data-q="doubt"]').onclick = () => go("narex");
+  $app.querySelector('[data-q="books"]').onclick = () => $("booksH").scrollIntoView({ behavior: "smooth" });
+  if (dailyState().done) $("dailyT").textContent = `Done for today · ${dailyStreak()} day streak`;
+  learningProgress(cls).then(pr => { const e = $("prN"); if (!e) return; e.textContent = `${pr.done}/${pr.total}`; $app.querySelector(".pr-ring").innerHTML = ring(pr.pct); });
+  fillBooks($("books"));
+  fillSeries($("series"), false);
+  fillNotices($("notices"), false).then(() => { const d = $("bdot"); if (d) d.hidden = !ALERTS.notices; });
+};
+
+VIEWS.courses = () => {
+  const cls = Number(S.profile.cls);
+  $app.innerHTML = appbar() + `<main><div class="in">
+    <div class="sec-h"><h2>My Courses</h2><span>Class ${cls} · ${myMed()}</span></div>
+    <div class="tiles" id="tiles"></div>
+    ${mockCard()}
+    <div class="sec-h"><h2>All classes & subjects</h2><span>6th to 12th</span></div>
+    <div class="classes" id="cg"></div>
+  </div></main>`;
+  courseTiles(document.getElementById("tiles"), cls);
+  wireMock();
   const cg = document.getElementById("cg");
   CLASSES.forEach(n => {
     const b = document.createElement("button");
-    b.className = "cls" + (n === 10 || n === 12 ? " board" : "") + (Number(p.cls) === n ? " mine" : "");
-    b.innerHTML = `<b>${n}<sup>th</sup></b><span>${Number(p.cls) === n ? "Your class" : (n === 10 || n === 12 ? "Board" : "Class")}</span>`;
+    b.className = "cls" + (n === 10 || n === 12 ? " board" : "") + (cls === n ? " mine" : "");
+    b.innerHTML = `<b>${n}<sup>th</sup></b><span>${cls === n ? "Your class" : (n === 10 || n === 12 ? "Board" : "Class")}</span>`;
     b.onclick = () => go("subjects", { cls: n });
     cg.appendChild(b);
   });
-  $app.querySelector("[data-tab-go]").onclick = () => resetTo("board");
-  document.getElementById("allT").onclick = () => go("series");
-  wireMock();
-  fillBooks(document.getElementById("books"));
-  document.getElementById("askN").onclick = () => go("narex");
+};
+
+VIEWS.board10 = ({ cls }) => {
+  $app.innerHTML = header("RBSE Board", `Class ${cls} · Notes & Questions`, true) + `<main><div class="in">
+    <div class="full"><h3>Full Syllabus Test</h3><p>A mixed paper from all Maths chapters in board exam format.</p>
+      <div class="meta"><span>${FULL_Q} questions</span><span>+${MARK_RIGHT} / −${MARK_WRONG}</span></div>
+      <button class="btn btn-gold" id="full" style="align-self:flex-start">Start test</button></div>
+    ${ncertBookUrls(cls, "Mathematics", myMed()).map((u, i, a) => `<a class="yt ncert" href="${u}" target="_blank" rel="noopener"><span class="yt-ic nb">N</span><span class="yt-t"><b>NCERT Maths Book${a.length > 1 ? " · Part " + (i + 1) : ""}</b><small>Official textbook · ${myMed()} medium</small></span><span class="yt-go">Open</span></a>`).join("")}
+    <button class="banner" id="chap"><div class="ic">∑</div><div><h3>Chapter-wise tests & notes</h3><p>Practise every chapter of the board syllabus.</p></div></button>
+    <div class="sec-h"><h2>Test Series</h2></div><div class="chs" id="series"></div>
+    <div class="sec-h"><h2>Books</h2></div><div class="list" id="books"></div>
+  </div></main>`;
+  document.getElementById("full").onclick = () => go("test", { cls, subject: "Mathematics", chapter: FULL });
+  document.getElementById("chap").onclick = () => go("chapters", { cls, subject: "Mathematics" });
   fillSeries(document.getElementById("series"), false);
-  fillNotices(document.getElementById("notices"), false);
+  fillBooks(document.getElementById("books"));
+};
+
+/* ----- Daily Maths Challenge: one question a day, same for the whole class ----- */
+const today = () => new Date().toLocaleDateString("en-CA");
+const dKey = k => `jrp-daily-${k}-${S.user.uid}`;
+function dailyState() { try { return JSON.parse(localStorage.getItem(dKey(today()))) || {}; } catch (e) { return {}; } }
+function dailyStreak() {
+  let n = 0; const d = new Date();
+  for (;;) { let st = {}; try { st = JSON.parse(localStorage.getItem(dKey(d.toLocaleDateString("en-CA")))) || {}; } catch (e) {} if (!st.done) break; n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+VIEWS.daily = async () => {
+  const cls = Number(S.profile.cls), med = myMed();
+  $app.innerHTML = header("Daily Maths Challenge", today(), true) + `<main><div class="in" id="in"><div class="spin"></div></div></main>`;
+  const box = document.getElementById("in");
+  let q = null;
+  const cacheK = dKey("q-" + today());
+  try { q = JSON.parse(localStorage.getItem(cacheK)); } catch (e) {}
+  if (!q) {
+    let pool = [];
+    try { pool = (await getDocs(query(collection(db, "questions"), where("cls", "==", cls), where("subject", "==", "Mathematics"), limit(30)))).docs.map(d => ({ id: d.id, ...d.data() })).filter(x => medOf(x) === med); } catch (e) {}
+    if (!pool.length) pool = MOCK[med].map((x, i) => ({ id: "mock" + i, ...x }));
+    const seed = [...today()].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7) >>> 0;
+    q = pool[seed % pool.length];
+    try { localStorage.setItem(cacheK, JSON.stringify(q)); } catch (e) {}
+  }
+  const st = dailyState();
+  const draw = () => {
+    const s2 = dailyState(), answered = s2.done;
+    box.innerHTML = `<div class="card"><div class="qtag">${esc(q.chapter || "Mathematics")}</div><p class="qtext">${esc(q.q)}</p><div class="opts" id="op"></div>
+      ${answered ? `<div class="${s2.right ? "ok-msg" : "err"}" style="font-size:16px"><b>${s2.right ? "Correct! Well done." : "Not quite."}</b> Correct answer: ${L[q.ans]}) ${esc(q.opts[q.ans])}</div>${q.sol ? `<p class="rv-ex">${esc(q.sol)}</p>` : ""}` : `<p class="hint">Choose one answer. You get one try per day.</p>`}
+      <div class="stats three"><div><b>${dailyStreak()}</b><span>Day streak</span></div><div><b>${answered ? (s2.right ? "✓" : "✗") : "–"}</b><span>Today</span></div><div><b>${new Date().getDate()}</b><span>${new Date().toLocaleDateString("en-IN", { month: "short" })}</span></div></div></div>
+      <p class="hint" style="text-align:center">A new question appears every day at midnight.</p>`;
+    const op = document.getElementById("op");
+    q.opts.forEach((t, i) => {
+      const b = document.createElement("button"); b.className = "opt";
+      if (answered) { b.disabled = true; if (i === q.ans) b.classList.add("right"); else if (i === s2.pick) b.classList.add("wrong"); }
+      b.innerHTML = `<span class="bub">${L[i]}</span><span></span>`; b.lastChild.textContent = t;
+      b.onclick = () => { try { localStorage.setItem(dKey(today()), JSON.stringify({ done: true, pick: i, right: i === q.ans })); } catch (e) {} draw(); };
+      op.appendChild(b);
+    });
+  };
+  draw();
+};
+
+/* ----- Practice tab ----- */
+VIEWS.practice = async () => {
+  const cls = Number(S.profile.cls), st = dailyState();
+  $app.innerHTML = appbar() + `<main><div class="in">
+    <div class="sec-h"><h2>Practice</h2><span>Class ${cls}</span></div>
+    <button class="banner challenge" id="daily"><span class="ic">${svg("target")}</span><div style="flex:1;min-width:0"><h3>Daily Maths Challenge</h3><p>${st.done ? `Done for today · ${dailyStreak()} day streak` : "Solve today's question"}</p></div><span class="go">→</span></button>
+    <button class="pcard" id="mist"><span class="qi q-red">${svg("target")}</span><span class="pc-t"><b>Practise my mistakes</b><small id="mN">Questions you got wrong in tests</small></span><span class="go">→</span></button>
+    <button class="pcard" id="quick"><span class="qi q-green">${svg("bolt")}</span><span class="pc-t"><b>Quick practice</b><small>10 random questions from your class</small></span><span class="go">→</span></button>
+    <button class="pcard" id="nx"><span class="qi q-blue">${svg("help")}</span><span class="pc-t"><b>Ask NareX</b><small>Stuck on a question? Ask with a photo</small></span><span class="go">→</span></button>
+    ${mockCard()}
+  </div></main>`;
+  const $ = id => document.getElementById(id);
+  $("daily").onclick = () => go("daily");
+  $("nx").onclick = () => go("narex");
+  wireMock();
+  const mine = await loadMyResults().catch(() => []);
+  const wrong = [...new Set(mine.flatMap(r => r.wrongIds || []))];
+  if ($("mN")) $("mN").textContent = wrong.length ? `${wrong.length} questions to revise` : "No mistakes saved yet. Take a chapter test first.";
+  $("mist").onclick = () => wrong.length ? go("ptest", { mode: "mistakes" }) : toast("Take a chapter test first.");
+  $("quick").onclick = () => go("ptest", { mode: "quick" });
+};
+VIEWS.ptest = async ({ mode }) => {
+  const cls = Number(S.profile.cls), med = myMed();
+  loading("Preparing practice…");
+  let qs = [];
+  try {
+    if (mode === "mistakes") {
+      const mine = await loadMyResults();
+      const ids = [...new Set(mine.flatMap(r => r.wrongIds || []))].slice(0, 20);
+      qs = (await fetchQuestions(ids)).filter(q => q.ans >= 0);
+    } else {
+      qs = (await getDocs(query(collection(db, "questions"), where("cls", "==", cls), where("subject", "==", "Mathematics"), limit(80)))).docs.map(d => ({ id: d.id, ...d.data() })).filter(q => medOf(q) === med);
+      qs = shuffle(qs).slice(0, 10);
+    }
+  } catch (e) {}
+  if (!qs.length) { $app.innerHTML = header("Practice", "", true) + `<main><div class="in"><div class="empty"><h3>No questions yet</h3><p>Questions for your class will appear here once your teacher adds them.</p></div></div></main>`; return; }
+  const t0 = Date.now(), title = mode === "mistakes" ? "Practise my mistakes" : "Quick practice";
+  runTest({ qs, startMs: t0, deadlineMs: t0 + Math.ceil(qs.length * 1.5) * 60000, tag: q => q.chapter || "Mathematics",
+    onFinish: ({ ans, timeSec, auto }) => showResult({ rec: { subject: "Mathematics", cls, chapter: title, ...scoreOf(qs, ans), timeSec }, qs, ans, auto, saved: true }) });
+};
+
+/* ----- Tests tab ----- */
+VIEWS.tests = async () => {
+  const cls = Number(S.profile.cls);
+  $app.innerHTML = appbar() + `<main><div class="in">
+    <div class="stats three" id="ts"><div><b>–</b><span>Tests taken</span></div><div><b>–</b><span>Average</span></div><div><b>–</b><span>Best</span></div></div>
+    <div class="row"><button class="btn btn-navy" id="res">My results</button><button class="btn btn-gold" id="rank">Leaderboard</button></div>
+    <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all →</button></div>
+    <div class="chs" id="series"></div>
+    <div class="full"><h3>Full Syllabus Test</h3><p>Class ${cls} Maths · board exam format.</p>
+      <div class="meta"><span>${FULL_Q} questions</span><span>+${MARK_RIGHT} / −${MARK_WRONG}</span></div>
+      <button class="btn btn-gold" id="full" style="align-self:flex-start">Start test</button></div>
+    <button class="banner" id="chap"><div class="ic">∑</div><div><h3>Chapter-wise tests</h3><p>Pick a chapter and test yourself.</p></div></button>
+    ${mockCard()}
+  </div></main>`;
+  const $ = id => document.getElementById(id);
+  $("res").onclick = () => go("results"); $("rank").onclick = () => go("board"); $("allT").onclick = () => go("series");
+  $("full").onclick = () => go("test", { cls, subject: "Mathematics", chapter: FULL });
+  $("chap").onclick = () => go("chapters", { cls, subject: "Mathematics" });
+  wireMock();
+  fillSeries($("series"), false);
+  const rs = (await loadMyResults().catch(() => [])).filter(r => !(r.endMs && r.endMs > Date.now()));
+  if ($("ts") && rs.length) {
+    const avg = Math.round(rs.reduce((a, r) => a + Math.max(0, r.score) / r.max, 0) / rs.length * 100);
+    const best = Math.max(...rs.map(r => Math.round(Math.max(0, r.score) / r.max * 100)));
+    $("ts").innerHTML = `<div><b>${rs.length}</b><span>Tests taken</span></div><div><b>${avg}%</b><span>Average</span></div><div><b>${best}%</b><span>Best</span></div>`;
+  }
 };
 
 VIEWS.subjects = async ({ cls }) => {
@@ -429,7 +645,7 @@ VIEWS.chapters = async ({ cls, subject }) => {
     const d = document.createElement("div"); d.className = "ch";
     d.innerHTML = `<div class="ch-top"><div class="ch-n">${i + 1}</div><div class="ch-t"><h3>${esc(c)}</h3>
       <span class="${r ? "done" : ""}">${r ? `Best score: ${r.score}/${r.max}` : `${CHAPTER_Q} questions · Not attempted`}</span></div></div>
-      <div class="ch-b"><button class="btn btn-gold" data-a="t">Take test</button><button class="btn btn-line" data-a="n">Notes</button>${ncertChapterUrl(cls, subject, myMed(), c) ? `<a class="btn btn-line" href="${ncertChapterUrl(cls, subject, myMed(), c)}" target="_blank" rel="noopener">NCERT</a>` : ""}</div>`;
+      <div class="ch-b"><button class="btn btn-gold" data-a="t">Take test</button><button class="btn btn-line" data-a="n">Notes</button>${videoFor(cls, subject, myMed(), c) ? `<a class="btn btn-line vid" href="${esc(videoFor(cls, subject, myMed(), c))}" target="_blank" rel="noopener">Video</a>` : ""}${ncertChapterUrl(cls, subject, myMed(), c) ? `<a class="btn btn-line" href="${ncertChapterUrl(cls, subject, myMed(), c)}" target="_blank" rel="noopener">NCERT</a>` : ""}</div>`;
     d.querySelector('[data-a="t"]').onclick = () => go("test", { cls, subject, chapter: c });
     d.querySelector('[data-a="n"]').onclick = () => go("notes", { cls, subject, chapter: c });
     list.appendChild(d);
@@ -485,7 +701,8 @@ VIEWS.test = async ({ cls, subject, chapter }) => {
       onFinish: async ({ ans, timeSec, auto }) => {
         const sc = scoreOf(qs, ans);
         const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls), studentMedium: myMed(),
-          cls: Number(cls), subject, chapter, testKey: testKey(cls, subject, chapter), ...sc, timeSec, atMs: Date.now(), at: serverTimestamp() };
+          cls: Number(cls), subject, chapter, testKey: testKey(cls, subject, chapter), ...sc, timeSec, atMs: Date.now(), at: serverTimestamp(),
+          wrongIds: qs.filter((q, i) => ans[i] !== null && ans[i] !== undefined && ans[i] !== q.ans).map(q => q.id).filter(Boolean) };
         loading("Saving your result…");
         let saved = true;
         try { await addDoc(collection(db, "results"), rec); S.myResults = null; } catch (e) { saved = false; }
@@ -713,7 +930,8 @@ async function submitSeries(t, qs, ans, timeSec, auto) {
   loading("Submitting your answers…");
   const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls), studentMedium: myMed(),
     cls: Number(t.cls), subject: t.subject, chapter: t.title, testKey: "T|" + t.id, testId: t.id, endMs: t.endMs,
-    ...scoreOf(qs, ans), answers: ans.map(a => a ?? -1), timeSec, atMs: Date.now(), at: serverTimestamp() };
+    ...scoreOf(qs, ans), answers: ans.map(a => a ?? -1), timeSec, atMs: Date.now(), at: serverTimestamp(),
+    wrongIds: qs.filter((q, i) => ans[i] != null && ans[i] !== q.ans).map(q => q.id).filter(Boolean) };
   try {
     await setDoc(doc(db, "results", `${t.id}_${S.user.uid}`), rec); S.myResults = null;
     $app.innerHTML = header(t.title, `${t.subject} · Class ${t.cls}`) + `<main><div class="in"><div class="card">
@@ -1206,43 +1424,148 @@ VIEWS.board = async () => {
 VIEWS.profile = () => {
   const p = S.profile;
   const rows = [["Name", p.name], ["Username", p.username], ["Class", p.cls + "th"], ["Medium", myMed()], ["Mobile", p.mobile], ["Father's name", p.father], ["School", p.school]].filter(r => r[1]);
-  $app.innerHTML = header("Profile", "JRP Education") + `
+  $app.innerHTML = appbar() + `
   <main><div class="in">
     <div class="card"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="width:52px;height:52px;font-size:18px">${esc(initials(p.name))}</div><div><h2 style="font-size:20px">${esc(p.name)}</h2><p class="hint">Student · Class ${esc(p.cls)}</p></div></div>
       <div>${rows.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
     </div>
+    <div class="list">
+      <button class="pcard" data-p="results"><span class="qi q-green">${svg("test")}</span><span class="pc-t"><b>My results</b><small>All your test scores</small></span><span class="go">→</span></button>
+      <button class="pcard" data-p="board"><span class="qi q-gold">${svg("trophy")}</span><span class="pc-t"><b>Leaderboard</b><small>Your rank in Class ${esc(p.cls)}</small></span><span class="go">→</span></button>
+      <button class="pcard" data-p="notices"><span class="qi q-blue">${svg("bell")}</span><span class="pc-t"><b>Notices</b><small>Announcements from JRP Education</small></span><span class="go">→</span></button>
+    </div>
+    ${ytCard()}
     <p class="hint">To change your details or password, contact JRP Education.</p>
     <button class="btn btn-line" id="out">Log out</button>
   </div></main>`;
   document.getElementById("out").onclick = () => signOut(auth);
+  $app.querySelectorAll("[data-p]").forEach(b => b.onclick = () => go(b.dataset.p));
 };
 
 /* ---------- teacher panel ---------- */
-let TTAB = "st";
-VIEWS.teacher = async () => {
-  $app.innerHTML = `<div class="top"><div class="in"><div class="top-mark"><img src="${LOGO}" alt=""></div><div class="tt"><h2>Teacher Panel</h2><small>JRP Education · Admin</small></div><button class="back nxb" id="nxb">NareX</button><button class="back" id="out">Log out</button></div></div>
-  <main><div class="in">
-    <div class="stats three" id="st"><div><b>–</b><span>Students</span></div><div><b>–</b><span>Tests taken</span></div><div><b>–</b><span>Questions</span></div></div>
-    <div class="tabs" role="tablist">
-      <button class="tb" data-t="st">Students</button><button class="tb" data-t="ts">Test Series</button><button class="tb" data-t="nb">Notices</button><button class="tb" data-t="pay">Payments</button><button class="tb" data-t="rs">Results</button><button class="tb" data-t="qs">Questions</button><button class="tb" data-t="sy">Syllabus & Notes</button>
-    </div>
+let TTAB = "st", TFILTER = "", TOPEN = false;
+const TSECS = {
+  content: [["qs", "Questions"], ["sy", "Syllabus, Notes & Videos"]],
+  tests: [["ts", "Test Series"], ["rs", "Results"]],
+  more: [["nb", "Notices"], ["pay", "Payments"]]
+};
+VIEWS.teacher = async ({ sec = "dash", sub } = {}) => {
+  const bar = appbar(`<button class="ab-nx" id="nxb">${svg("spark")}NareX</button>`);
+  if (sec === "dash") return teacherDash(bar);
+  if (sec === "st") { TTAB = "st"; }
+  else { const list = TSECS[sec]; if (!list.some(x => x[0] === TTAB)) TTAB = sub || list[0][0]; }
+  const tabs = TSECS[sec] ? `<div class="tabs" role="tablist">${TSECS[sec].map(([k, t]) => `<button class="tb" data-t="${k}">${t}</button>`).join("")}</div>` : "";
+  $app.innerHTML = bar + `<main><div class="in">
+    ${sec === "st" ? `<div class="sec-h"><h2>Students</h2><button class="link" id="allD">All details →</button></div>` : ""}
+    ${tabs}
     <div id="pane"></div>
+    ${sec === "more" ? `<button class="pcard" id="out"><span class="qi q-red">${svg("logout")}</span><span class="pc-t"><b>Log out</b><small>Teacher account</small></span></button>` : ""}
   </div></main>`;
-  document.getElementById("out").onclick = () => signOut(auth);
   document.getElementById("nxb").onclick = () => go("narex");
+  const o = document.getElementById("out"); if (o) o.onclick = () => signOut(auth);
+  const ad = document.getElementById("allD"); if (ad) ad.onclick = () => go("allStudents");
   $app.querySelectorAll(".tb").forEach(b => b.onclick = () => { TTAB = b.dataset.t; showTab(); });
   showTab();
-  try {
-    const [u, r, q] = await Promise.all([getDocs(collection(db, "users")), getDocs(query(collection(db, "results"), limit(1000))), getDocs(collection(db, "questions"))]);
-    const st = document.getElementById("st");
-    if (st) st.innerHTML = `<div><b>${u.size}</b><span>Students</span></div><div><b>${r.size}${r.size >= 1000 ? "+" : ""}</b><span>Tests taken</span></div><div><b>${q.size}</b><span>Questions</span></div>`;
-  } catch (e) {}
 };
 function showTab() {
   $app.querySelectorAll(".tb").forEach(b => b.setAttribute("aria-selected", b.dataset.t === TTAB));
   const pane = document.getElementById("pane");
   pane.innerHTML = `<div class="loading" style="min-height:30vh"><div class="spin"></div></div>`;
   ({ pay: tabPayments, nb: tabNotices, ts: tabSeries, st: tabStudents, rs: tabResults, qs: tabQuestions, sy: tabSyllabus })[TTAB](pane);
+}
+const toMs = v => v && typeof v.toMillis === "function" ? v.toMillis() : (typeof v === "number" ? v : 0);
+function growthChart(times) {
+  const W = 320, H = 130, P = 26, days = 30, now = new Date(); now.setHours(23, 59, 59, 999);
+  const start = now.getTime() - (days - 1) * 864e5;
+  const before = times.filter(t => t && t < start).length;
+  const pts = [];
+  for (let i = 0; i < days; i++) { const end = start + i * 864e5; pts.push(before + times.filter(t => t && t >= start && t <= end).length); }
+  const total = times.length, max = Math.max(4, ...pts), stepY = Math.ceil(max / 4);
+  const top = stepY * 4, x = i => P + i * (W - P - 8) / (days - 1), y = v => H - 18 - v / top * (H - 30);
+  const line = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const area = `${line}L${x(days - 1).toFixed(1)},${y(0)}L${x(0)},${y(0)}Z`;
+  const grid = [0, 1, 2, 3, 4].map(k => `<line x1="${P}" x2="${W - 4}" y1="${y(k * stepY)}" y2="${y(k * stepY)}" class="g"/><text x="${P - 6}" y="${y(k * stepY) + 4}" text-anchor="end" class="lab">${k * stepY}</text>`).join("");
+  const fmt = ms => new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Students joined in the last 30 days">${grid}
+    <path d="${area}" class="area"/><path d="${line}" class="ln"/>
+    <circle cx="${x(days - 1)}" cy="${y(pts[days - 1])}" r="4.5" class="pt"/>
+    <text x="${x(0)}" y="${H - 2}" class="lab">${fmt(start)}</text><text x="${x(days - 1)}" y="${H - 2}" text-anchor="end" class="lab">Today · ${total}</text></svg>`;
+}
+async function teacherDash(bar) {
+  $app.innerHTML = bar + `<main><div class="in">
+    <div class="welcome t"><div class="wl-av">${svg("board")}</div><div class="wl-t"><small>JRP Education</small><h1>Welcome, Teacher!</h1><p>Create · Teach · Inspire</p></div></div>
+    <div class="kpis" id="kp">${["Students", "Tests taken", "Questions", "Revenue"].map(t => `<div><b>–</b><span>${t}</span></div>`).join("")}</div>
+    <div id="req"></div>
+    <div class="sec-h"><h2>Quick Actions</h2></div>
+    <div class="qa">
+      <button data-go="st:add"><span class="qi q-blue">${svg("user")}</span>Add Student</button>
+      <button data-go="content:qs"><span class="qi q-green">${svg("plus")}</span>Add Questions</button>
+      <button data-go="content:sy"><span class="qi q-red">${svg("video")}</span>Notes & Video</button>
+      <button data-go="tests:ts"><span class="qi q-orange">${svg("test")}</span>Create Test</button>
+      <button data-go="more:nb"><span class="qi q-purple">${svg("megaphone")}</span>Post Notice</button>
+      <button data-go="more:pay"><span class="qi q-gold">${svg("rupee")}</span>Payments</button>
+      <button data-go="narex"><span class="qi q-navy">${svg("spark")}</span>NareX AI</button>
+      <button data-go="allStudents"><span class="qi q-teal">${svg("chart")}</span>Reports</button>
+    </div>
+    <div class="sec-h"><h2>My Batches</h2><button class="link" data-go="st">View all →</button></div>
+    <div class="list" id="batches"><div class="spin"></div></div>
+    <div class="card"><div class="sec-h"><h2 style="font-size:17px">Student Growth</h2><span>Last 30 days</span></div><div id="growth"><div class="spin"></div></div></div>
+    <div class="two dash2">
+      <div class="card"><h3 style="font-size:15px">Revenue Overview</h3><div id="rev"><div class="spin"></div></div></div>
+      <div class="card"><h3 style="font-size:15px">Top Courses</h3><ol class="top" id="topc"><li>–</li></ol></div>
+    </div>
+    <div class="sec-h"><h2>Recent Activity</h2></div>
+    <div class="list" id="act"><div class="spin"></div></div>
+  </div></main>`;
+  const $ = id => document.getElementById(id);
+  $("nxb").onclick = () => go("narex");
+  $app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => {
+    const [sec, sub] = b.dataset.go.split(":");
+    if (sec === "narex" || sec === "allStudents") return go(sec);
+    if (sec === "st") { TFILTER = ""; TOPEN = sub === "add"; return resetTo("teacher", { sec: "st" }); }
+    TTAB = sub; resetTo("teacher", { sec });
+  });
+  let users = [], results = [], purchases = [], qCount = 0;
+  try {
+    const [u, r, p, qc] = await Promise.all([getDocs(collection(db, "users")), getDocs(query(collection(db, "results"), orderBy("atMs", "desc"), limit(500))),
+      getDocs(collection(db, "purchases")), getCountFromServer(collection(db, "questions")).catch(() => null)]);
+    users = u.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.status !== "rejected");
+    results = r.docs.map(d => d.data()); purchases = p.docs.map(d => d.data()); qCount = qc ? qc.data().count : 0;
+  } catch (e) { const ac = $("act"); if (ac) ac.innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+  if (!$("kp")) return;
+  const paid = purchases.filter(x => x.status === "approved"), revenue = paid.reduce((a, x) => a + (x.price || 0), 0);
+  const active = users.filter(x => x.status !== "pending");
+  $("kp").innerHTML = `<div class="k-blue"><span class="ki">${svg("user")}</span><b>${active.length}</b><span>Students</span></div><div class="k-green"><span class="ki">${svg("test")}</span><b>${results.length}${results.length >= 500 ? "+" : ""}</b><span>Tests taken</span></div><div class="k-orange"><span class="ki">${svg("book")}</span><b>${qCount}</b><span>Questions</span></div><div class="k-purple"><span class="ki">${svg("rupee")}</span><b>₹${revenue}</b><span>Revenue</span></div>`;
+  // pending requests (old sign-ups) and payments needing action
+  const pend = users.filter(x => x.status === "pending").length, pp = purchases.filter(x => x.status === "pending").length;
+  if (pend || pp) $("req").innerHTML = `<button class="banner live" id="todo"><div class="ic">!</div><div style="flex:1"><h3>Needs your attention</h3><p>${[pend ? `${pend} student request${pend > 1 ? "s" : ""}` : "", pp ? `${pp} payment${pp > 1 ? "s" : ""} to approve` : ""].filter(Boolean).join(" · ")}</p></div></button>`;
+  const todo = $("todo"); if (todo) todo.onclick = () => { if (pp && !pend) { TTAB = "pay"; resetTo("teacher", { sec: "more" }); } else resetTo("teacher", { sec: "st" }); };
+  // batches = classes
+  const bt = $("batches"); bt.innerHTML = "";
+  const byCls = CLASSES.map(c => ({ c, list: active.filter(x => Number(x.cls) === c) })).filter(x => x.list.length);
+  if (!byCls.length) bt.innerHTML = `<div class="empty"><h3>No students yet</h3><p>Share the app link so students can create their accounts.</p></div>`;
+  byCls.forEach(({ c, list }) => {
+    const en = list.filter(x => medOf(x) === "English").length, hi = list.length - en;
+    const b = document.createElement("button"); b.className = "item batch";
+    b.innerHTML = `<div class="av bt">${c}</div><div class="mid"><b>Class ${c}${c === 10 || c === 12 ? " · RBSE Board" : ""}</b><span>${list.length} students · English ${en} · Hindi ${hi}</span></div><div class="end"><small>View →</small></div>`;
+    b.onclick = () => { TFILTER = String(c); TOPEN = false; resetTo("teacher", { sec: "st" }); };
+    bt.appendChild(b);
+  });
+  $("growth").innerHTML = growthChart(active.map(x => toMs(x.createdAt)).filter(Boolean));
+  const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
+  const monthRev = paid.filter(x => (x.approvedAtMs || x.atMs) >= m0.getTime()).reduce((a, x) => a + (x.price || 0), 0);
+  $("rev").innerHTML = `<p class="big">₹${monthRev}</p><p class="hint">This month</p><p class="hint" style="margin-top:6px">Total ₹${revenue} · ${paid.length} sale${paid.length === 1 ? "" : "s"}</p>`;
+  const bySub = {}; results.forEach(r => { const k = r.testId ? "Test Series" : (r.subject || "Other"); bySub[k] = (bySub[k] || 0) + 1; });
+  const top = Object.entries(bySub).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  $("topc").innerHTML = top.length ? top.map(([k, n]) => `<li><span>${esc(k)}</span><b>${n}</b></li>`).join("") : `<li class="hint">No tests yet</li>`;
+  // recent activity
+  const ev = [
+    ...results.slice(0, 12).map(r => ({ t: r.atMs, ic: "test", tone: "q-green", h: `${r.name} scored ${r.score}/${r.max}`, s: `${r.chapter} · ${r.subject}` })),
+    ...active.map(x => ({ t: toMs(x.createdAt), ic: "user", tone: "q-blue", h: `${x.name} joined`, s: `Class ${x.cls} · ${medOf(x)} medium` })),
+    ...purchases.map(x => ({ t: x.atMs, ic: "rupee", tone: "q-gold", h: `${x.name} ${x.status === "approved" ? "bought" : "requested"} ${x.title}`, s: `₹${x.price}` }))
+  ].filter(e => e.t).sort((a, b) => b.t - a.t).slice(0, 8);
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 60 ? `${Math.max(1, m)} min ago` : m < 1440 ? `${Math.round(m / 60)} hours ago` : fmtDate(t); };
+  $("act").innerHTML = ev.length ? ev.map(e => `<div class="item"><span class="qi sm ${e.tone}">${svg(e.ic)}</span><div class="mid"><b>${esc(e.h)}</b><span>${esc(e.s)} · ${ago(e.t)}</span></div></div>`).join("") : `<div class="empty"><h3>No activity yet</h3><p>Sign-ups, tests and payments will show here.</p></div>`;
 }
 const classOptions = (sel, any) => (any ? `<option value="">All classes</option>` : "") + CLASSES.map(c => `<option value="${c}" ${Number(sel) === c ? "selected" : ""}>Class ${c}</option>`).join("");
 const subjectOptions = (c, sel) => subjectsFor(Number(c)).map(s => `<option ${s === sel ? "selected" : ""}>${esc(s)}</option>`).join("");
@@ -1273,6 +1596,8 @@ async function tabStudents(pane) {
   const $ = id => document.getElementById(id);
   $("add").onclick = () => { $("f").hidden = !$("f").hidden; };
   $("allD").onclick = () => go("allStudents");
+  if (TFILTER) { $("fc").value = TFILTER; TFILTER = ""; }
+  if (TOPEN) { $("f").hidden = false; TOPEN = false; }
   const autoU = () => { if (!$("su").dataset.touched) $("su").value = slug(($("sn").value.split(" ")[0] || "")) + $("sc").value; };
   $("sn").oninput = autoU; $("sc").onchange = autoU; $("su").oninput = () => $("su").dataset.touched = "1";
   $("sp").value = genPass();
@@ -1533,8 +1858,9 @@ async function tabSyllabus(pane) {
     <form class="card" id="f2" novalidate>
       <h3 style="font-size:18px">Notes</h3>
       <div class="field"><label for="nc">Chapter</label><select id="nc"></select></div>
+      <div class="field"><label for="nv">YouTube video link (optional)</label><input id="nv" type="url" inputmode="url" placeholder="https://youtu.be/…"></div>
       <div class="field"><label for="nt">Notes and formulas</label><textarea id="nt" style="min-height:220px" placeholder="Key points, formulas and examples for this chapter"></textarea></div>
-      <button class="btn btn-navy" type="submit">Save notes</button>
+      <button class="btn btn-navy" type="submit">Save notes & video</button>
     </form></div>`;
   const $ = id => document.getElementById(id);
   const fillSubj = () => { $("ys").innerHTML = subjectOptions($("yc").value, $("ys").value); };
@@ -1565,7 +1891,7 @@ async function tabSyllabus(pane) {
       </tbody></table></div><p class="hint">A chapter test needs at least ${CHAPTER_Q} questions.</p>`;
   }
   const loadNote = async () => {
-    $("nt").value = "";
+    $("nt").value = ""; $("nv").value = videoFor(Number($("yc").value), $("ys").value, $("ym").value, $("nc").value);
     if (!$("nc").value) return;
     try { const d = await getDoc(doc(db, "notes", `${$("yc").value}_${$("ys").value}_${$("nc").value}`)); $("nt").value = d.exists() ? d.data().text || "" : ""; } catch (e) {}
   };
@@ -1575,12 +1901,20 @@ async function tabSyllabus(pane) {
   $("f1").onsubmit = async e => {
     e.preventDefault();
     const chapters = $("yl").value.split("\n").map(x => x.trim()).filter(Boolean);
-    try { await setDoc(doc(db, "syllabus", sylDocId($("yc").value, $("ys").value, $("ym").value)), { chapters, medium: $("ym").value }); toast("Chapters saved"); await load(); } catch (x) { toast(errText(x)); }
+    try { await setDoc(doc(db, "syllabus", sylDocId($("yc").value, $("ys").value, $("ym").value)), { chapters, medium: $("ym").value }, { merge: true }); toast("Chapters saved"); await load(); } catch (x) { toast(errText(x)); }
   };
   $("f2").onsubmit = async e => {
     e.preventDefault();
     if (!$("nc").value) { toast("Add chapters first"); return; }
-    try { await setDoc(doc(db, "notes", `${$("yc").value}_${$("ys").value}_${$("nc").value}`), { text: $("nt").value }); toast("Notes saved"); } catch (x) { toast(errText(x)); }
+    const url = $("nv").value.trim();
+    if (url && !/^https?:\/\/(www\.|m\.)?(youtube\.com|youtu\.be)\//i.test(url)) { toast("Paste a YouTube link"); return; }
+    try {
+      await setDoc(doc(db, "notes", `${$("yc").value}_${$("ys").value}_${$("nc").value}`), { text: $("nt").value });
+      const c = Number($("yc").value), sb = $("ys").value, m = $("ym").value, k = sylKey(c, sb, m);
+      const v = { ...(VIDEOS[k] || {}) }; if (url) v[$("nc").value] = url; else delete v[$("nc").value];
+      await setDoc(doc(db, "syllabus", sylDocId(c, sb, m)), { videos: v }, { mergeFields: ["videos"] });
+      VIDEOS[k] = v; toast("Saved");
+    } catch (x) { toast(errText(x)); }
   };
 }
 
