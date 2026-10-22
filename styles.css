@@ -250,3 +250,8 @@ main.chatmain .in{padding-bottom:150px}
 @keyframes bl{0%,100%{opacity:.25}50%{opacity:1}}
 .back.nxb{background:var(--gold);color:var(--navy);font-weight:700}
 .msg .b .cp{display:block;margin-top:6px;font-size:13px}
+.attach{width:44px;height:44px;border-radius:12px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;cursor:pointer;background:var(--bg)}
+.attach svg{width:22px;height:22px;stroke:var(--navy);fill:none;stroke-width:2;stroke-linejoin:round}
+.att{display:flex;align-items:center;gap:10px}
+.att img{height:56px;border-radius:8px;border:1px solid var(--line)}
+.qimg{display:block;max-width:220px;max-height:220px;border-radius:10px;margin-bottom:6px}

@@ -990,6 +990,7 @@ let narexModel = null, narexChat = null, narexHist = [];
 function narexPrompt() {
   if (S.admin) return `You are NareX, the AI assistant of JRP Education, a maths coaching institute in Rajasthan, India (NCERT / RBSE, classes 6 to 12, Hindi and English medium).
 You are helping the teacher, not a student. Reply in the language the teacher writes in (Hindi in Devanagari, English, or Hinglish).
+The teacher may send photos of book pages or question papers; read them carefully (for example, to turn them into MCQs in the format below).
 You help the teacher to: write MCQ questions, solutions, chapter notes and formula lists, notices for students, and explain topics.
 When asked for MCQs, ALWAYS use exactly this format so the teacher can paste it into the app, with one blank line between questions:
 Q: question text
@@ -1006,6 +1007,7 @@ Write maths in plain text with symbols like ², ³, √, π, ×, ÷, θ. Do not 
 You are talking to ${p.name}, a Class ${p.cls} student studying in ${hi ? "Hindi" : "English"} medium (NCERT / RBSE syllabus).
 Rules:
 - ${hi ? "Reply in simple Hindi written in Devanagari script. Keep maths terms as used in NCERT Hindi books." : "Reply in simple English."}
+- The student may send a photo of a question from a book or notebook. Read it carefully, write the question in text first, then solve it. If the photo is unclear, ask for a clearer photo.
 - Solve maths and study doubts step by step, the way a good teacher explains on a board. Number the steps. Show the formula first, then substitution, then the answer.
 - Keep answers short and clear for a Class ${p.cls} student. End with the final answer on its own line.
 - Write maths in plain text with symbols like ², ³, √, π, ×, ÷, θ. Do not use LaTeX or code blocks.
@@ -1039,6 +1041,21 @@ const narexLimit = () => S.admin ? 100 : NAREX.daily;
 const narexKey = () => `jrp-narex-${S.user.uid}-${new Date().toISOString().slice(0, 10)}`;
 const narexUsed = () => { try { return Number(localStorage.getItem(narexKey())) || 0; } catch (e) { return 0; } };
 const narexUse = () => { try { localStorage.setItem(narexKey(), String(narexUsed() + 1)); } catch (e) {} };
+// resize a photo to at most 1280px so it uploads fast and uses less of the free quota
+function shrinkImage(file) {
+  return new Promise((ok, bad) => {
+    const url = URL.createObjectURL(file), im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 1280 / Math.max(im.width, im.height));
+      const c = document.createElement("canvas"); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      const d = c.toDataURL("image/jpeg", 0.85); URL.revokeObjectURL(url);
+      ok({ mimeType: "image/jpeg", data: d.split(",")[1], url: d });
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); bad(new Error("bad image")); };
+    im.src = url;
+  });
+}
 function narexHtml(t) {
   return esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\$+/g, "").replace(/\n/g, "<br>");
 }
@@ -1049,7 +1066,9 @@ VIEWS.narex = () => {
     <div class="chat" id="chat"></div>
     <p class="hint" style="text-align:center">NareX is an AI and can make mistakes. Check important answers with your teacher.</p>
   </div></main>
-  <form class="composer" id="cf"><div class="in">
+  <form class="composer" id="cf"><div class="in" id="prev" hidden><div class="att"><img id="pimg" alt="Attached photo"><button type="button" class="link" id="prm">Remove</button></div></div><div class="in">
+    <label class="attach" for="cimg" aria-label="Add photo"><svg viewBox="0 0 24 24"><path d="M4 7h3l2-2h6l2 2h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg></label>
+    <input id="cimg" type="file" accept="image/*" hidden>
     <textarea id="cq" rows="1" placeholder="${T ? "e.g. 10 MCQs on Polynomials, Class 10, Hindi" : hi ? "अपना सवाल लिखें…" : "Type your maths question…"}"></textarea>
     <button class="btn btn-navy" id="cs" type="submit" aria-label="Send">Send</button>
   </div><div class="in"><span class="hint" id="left"></span></div></form>`;
@@ -1063,18 +1082,28 @@ VIEWS.narex = () => {
     : `Hi student! I'm NareX. Ask me any maths doubt and I'll explain it step by step.\n\nFor example: "Solve x² − 5x + 6 = 0" or "What is sin 30° + cos 60°?"`));
   narexHist.forEach(m => { const b = bubble(m.who, narexHtml(m.text)); if (m.who === "bot") addCopy(b, m.text); });
   showLeft();
+  let img = null; // {mimeType, data, url}
+  const prev = document.getElementById("prev"), pimg = document.getElementById("pimg"), cimg = document.getElementById("cimg");
+  cimg.onchange = async () => {
+    const f = cimg.files && cimg.files[0]; cimg.value = ""; if (!f) return;
+    try { img = await shrinkImage(f); pimg.src = img.url; prev.hidden = false; cq.placeholder = T ? "What should I do with this photo?" : hi ? "फोटो के बारे में लिखें (वैकल्पिक)…" : "Add a note (optional)…"; }
+    catch (e) { toast("Could not read this photo"); }
+  };
+  document.getElementById("prm").onclick = () => { img = null; prev.hidden = true; };
   cq.addEventListener("input", () => { cq.style.height = "auto"; cq.style.height = Math.min(cq.scrollHeight, 140) + "px"; });
   document.getElementById("cf").onsubmit = async e => {
     e.preventDefault();
-    const q = cq.value.trim(); if (!q || cs.disabled) return;
+    const q = cq.value.trim() || (img ? (hi ? "इस फोटो वाले सवाल को स्टेप-बाय-स्टेप हल करो।" : "Solve the question in this photo step by step.") : "");
+    if (!q || cs.disabled) return;
     if (narexUsed() >= narexLimit()) { showLeft(); return; }
     cq.value = ""; cq.style.height = "auto"; cs.disabled = true;
-    bubble("me", narexHtml(q)); narexHist.push({ who: "me", text: q });
+    const sent = img; img = null; prev.hidden = true;
+    const mb = bubble("me", (sent ? `<img class="qimg" src="${sent.url}" alt="">` : "") + narexHtml(q)); narexHist.push({ who: "me", text: q });
     const out = bubble("bot", `<span class="dots"><i></i><i></i><i></i></span>`);
     try {
       const model = await narexInit();
       if (!narexChat) narexChat = model.startChat({ history: [] });
-      const res = await narexChat.sendMessageStream(q);
+      const res = await narexChat.sendMessageStream(sent ? [q, { inlineData: { mimeType: sent.mimeType, data: sent.data } }] : q);
       let text = "";
       for await (const ch of res.stream) { text += ch.text(); out.innerHTML = narexHtml(text); out.scrollIntoView({ block: "end" }); }
       narexHist.push({ who: "bot", text }); narexUse(); addCopy(out, text);
