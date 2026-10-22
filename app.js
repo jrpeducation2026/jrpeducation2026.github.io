@@ -72,6 +72,14 @@ const DEFAULT_SYLLABUS = {
 };
 const FULL = "Full Syllabus Test";
 const YOUTUBE_URL = "https://www.youtube.com/@jrpedu2026";
+// Paid books. The PDF is stored encrypted; its key is released by the database only after the teacher approves payment.
+const UPI_ID = "";            // set to the coaching UPI ID (e.g. "9876543210@ybl") to enable UPI payment
+const UPI_NAME = "JRP Education";
+const BOOKS = [
+  { id: "formula-10-hindi", title: "JRP Maths Concepts", sub: "Class 10 · Hindi Edition · RBSE 2026-27", price: 9, pages: 58,
+    file: "books/formula-10-hindi.bin", cover: "books/formula-10-hindi-cover.jpg",
+    points: ["सभी 14 अध्याय", "सूत्र-सारांश और हल सहित उदाहरण", "मॉडल पेपर और 7 दिन की योजना"] }
+];
 const ytCard = () => `<a class="yt" href="${YOUTUBE_URL}" target="_blank" rel="noopener">
   <span class="yt-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 8.5v7l6-3.5z"/></svg></span>
   <span class="yt-t"><b>JRP Education on YouTube</b><small>Watch video lessons · @jrpedu2026</small></span><span class="yt-go">Open</span></a>`;
@@ -331,6 +339,8 @@ VIEWS.home = () => {
     <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all</button></div>
     <div class="chs" id="series"></div>
     ${mockCard()}
+    <div class="sec-h"><h2>Books</h2><span>Study material</span></div>
+    <div class="list" id="books"></div>
     <div class="sec-h"><h2>Select class</h2><span>6th to 12th</span></div>
     <div class="classes" id="cg"></div>
     <button class="banner" data-tab-go="board">
@@ -350,6 +360,7 @@ VIEWS.home = () => {
   $app.querySelector("[data-tab-go]").onclick = () => resetTo("board");
   document.getElementById("allT").onclick = () => go("series");
   wireMock();
+  fillBooks(document.getElementById("books"));
   fillSeries(document.getElementById("series"), false);
   fillNotices(document.getElementById("notices"), false);
 };
@@ -799,6 +810,176 @@ VIEWS.mock = ({ medium } = {}) => {
   };
 };
 
+
+/* ----- paid books ----- */
+const purId = (bookId, uid) => `${bookId}_${uid}`;
+async function myPurchase(b) {
+  try { const d = await getDoc(doc(db, "purchases", purId(b.id, S.user.uid))); return d.exists() ? d.data() : null; } catch (e) { return null; }
+}
+function bookCard(b, pur) {
+  const st = pur ? pur.status : "";
+  const d = document.createElement("button"); d.className = "book";
+  d.innerHTML = `<img src="${b.cover}" alt="" loading="lazy"><div class="mid"><b></b><span></span>
+    <em class="${st === "approved" ? "ok" : st === "pending" ? "wait" : ""}">${st === "approved" ? "Unlocked · Read now" : st === "pending" ? "Payment under review" : `₹${b.price} · Unlock`}</em></div>`;
+  d.querySelector("b").textContent = b.title; d.querySelector(".mid span").textContent = b.sub;
+  d.onclick = () => go(st === "approved" ? "reader" : "book", { id: b.id });
+  return d;
+}
+async function fillBooks(box) {
+  const purs = await Promise.all(BOOKS.map(myPurchase));
+  box.innerHTML = ""; BOOKS.forEach((b, i) => box.appendChild(bookCard(b, purs[i])));
+}
+VIEWS.book = async ({ id }) => {
+  const b = BOOKS.find(x => x.id === id);
+  $app.innerHTML = header(b.title, b.sub, true) + `<main><div class="in" id="in"><div class="spin"></div></div></main>`;
+  const pur = await myPurchase(b);
+  if (pur && pur.status === "approved") { go("reader", { id }, { replace: true }); return; }
+  const box = document.getElementById("in");
+  const head = `<div class="card"><div style="display:flex;gap:14px"><img src="${b.cover}" alt="" class="cover"><div style="min-width:0">
+      <h2 style="font-size:20px">${esc(b.title)}</h2><p class="hint">${esc(b.sub)} · ${b.pages} pages</p>
+      <p class="price">₹${b.price}</p></div></div>
+      <ul class="hint" style="margin:0;padding-left:20px;font-size:15px">${b.points.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`;
+  if (pur && pur.status === "pending") {
+    box.innerHTML = head + `<div class="card"><h3 style="font-size:18px">Payment under review</h3><p>Your request was sent on ${esc(fmtDate(pur.atMs))}${pur.utr ? ` with transaction ID <b>${esc(pur.utr)}</b>` : ""}. The book unlocks as soon as JRP Education confirms your payment.</p><button class="btn btn-navy" id="chk">Check again</button></div>`;
+    document.getElementById("chk").onclick = () => render();
+    return;
+  }
+  const upiLink = UPI_ID ? `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_NAME)}&am=${b.price}&cu=INR&tn=${encodeURIComponent(b.title + " " + S.profile.username)}` : "";
+  box.innerHTML = head + `<form class="card" id="f" novalidate>
+      <h3 style="font-size:18px">Unlock for ₹${b.price}</h3>
+      ${UPI_ID ? `<p><b>Step 1.</b> Pay ₹${b.price} with any UPI app.</p>
+        <a class="btn btn-gold" href="${upiLink}">Pay ₹${b.price} with UPI</a>
+        <p class="hint">UPI ID: <b id="upi">${esc(UPI_ID)}</b> <button type="button" class="link" id="cpu">Copy</button></p>
+        <p><b>Step 2.</b> Enter the transaction ID (UTR) shown in your UPI app after payment.</p>
+        <div class="field"><label for="utr">Transaction ID / UTR</label><input id="utr" type="text" inputmode="numeric" placeholder="12-digit number"></div>`
+      : `<p>Pay ₹${b.price} to JRP Education, then send your request below. The book unlocks when your teacher confirms the payment.</p>
+        <div class="field"><label for="utr">Payment note (optional)</label><input id="utr" type="text" placeholder="e.g. Paid in cash to sir"></div>`}
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" type="submit" id="go">${UPI_ID ? "Submit payment details" : "Request access"}</button>
+    </form>`;
+  const cpu = document.getElementById("cpu");
+  if (cpu) cpu.onclick = async () => { try { await navigator.clipboard.writeText(UPI_ID); toast("UPI ID copied"); } catch (e) { toast(UPI_ID); } };
+  document.getElementById("f").onsubmit = async e => {
+    e.preventDefault(); const err = document.getElementById("err"); err.hidden = true;
+    const utr = document.getElementById("utr").value.trim();
+    if (UPI_ID && !/^\w{6,30}$/.test(utr)) { err.textContent = "Enter the transaction ID from your UPI app."; err.hidden = false; return; }
+    try {
+      await setDoc(doc(db, "purchases", purId(b.id, S.user.uid)), { uid: S.user.uid, product: b.id, title: b.title, price: b.price, utr,
+        name: S.profile.name, username: S.profile.username, cls: Number(S.profile.cls), status: "pending", atMs: Date.now(), at: serverTimestamp() });
+      toast("Request sent"); render();
+    } catch (x) { err.textContent = errText(x); err.hidden = false; }
+  };
+};
+
+let pdfjsReady = null;
+function loadPdfJs() {
+  if (!pdfjsReady) pdfjsReady = new Promise((ok, bad) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; ok(window.pdfjsLib); };
+    sc.onerror = () => { pdfjsReady = null; bad(new Error("Could not load the book viewer. Check your internet connection.")); };
+    document.head.appendChild(sc);
+  });
+  return pdfjsReady;
+}
+const b64ToBytes = b => Uint8Array.from(atob(b), c => c.charCodeAt(0));
+VIEWS.reader = async ({ id }) => {
+  const b = BOOKS.find(x => x.id === id);
+  $app.innerHTML = header(b.title, b.sub, true) + `<main class="reader"><div class="in" id="in"><div class="loading" style="min-height:40vh"><div><div class="spin"></div><span id="st">Opening book…</span></div></div></div></main>`;
+  const st = t => { const e = document.getElementById("st"); if (e) e.textContent = t; };
+  try {
+    const kd = await getDoc(doc(db, "bookKeys", b.id));
+    if (!kd.exists()) throw new Error("This book is not ready yet. Please ask your teacher.");
+    st("Downloading book…");
+    const [lib, buf] = await Promise.all([loadPdfJs(), fetch(b.file).then(r => { if (!r.ok) throw new Error("Download failed"); return r.arrayBuffer(); })]);
+    st("Unlocking…");
+    const key = await crypto.subtle.importKey("raw", b64ToBytes(kd.data().key), "AES-GCM", false, ["decrypt"]);
+    const all = new Uint8Array(buf);
+    const pdfBytes = await crypto.subtle.decrypt({ name: "AES-GCM", iv: all.slice(0, 12) }, key, all.slice(12));
+    const pdf = await lib.getDocument({ data: new Uint8Array(pdfBytes) }).promise;
+    const box = document.getElementById("in");
+    if (!box) return;
+    box.innerHTML = `<p class="hint" style="text-align:center">${pdf.numPages} pages · Licensed to ${esc(S.profile.name)}</p><div id="pages" class="pages"></div>`;
+    const wrap = document.getElementById("pages");
+    const mark = `${S.profile.name} · ${S.profile.username}`;
+    const slots = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const sl = document.createElement("div"); sl.className = "page"; sl.dataset.n = i; sl.style.aspectRatio = "0.707";
+      sl.innerHTML = `<span class="pg-n">${i}</span>`;
+      wrap.appendChild(sl); slots.push(sl);
+    }
+    const drawPage = async sl => {
+      if (sl.dataset.done) return; sl.dataset.done = "1";
+      const page = await pdf.getPage(Number(sl.dataset.n));
+      const w = sl.clientWidth || 360, v0 = page.getViewport({ scale: 1 });
+      const scale = (w / v0.width) * Math.min(2, window.devicePixelRatio || 1);
+      const vp = page.getViewport({ scale });
+      const cv = document.createElement("canvas"); cv.width = vp.width; cv.height = vp.height;
+      sl.style.aspectRatio = `${v0.width} / ${v0.height}`;
+      const ctx = cv.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = "#0f2a6b"; ctx.font = `${Math.round(cv.width / 26)}px sans-serif`;
+      ctx.translate(cv.width / 2, cv.height / 2); ctx.rotate(-Math.PI / 6);
+      for (let y = -cv.height; y < cv.height; y += cv.width / 5) ctx.fillText(mark, -ctx.measureText(mark).width / 2, y);
+      ctx.restore();
+      sl.innerHTML = ""; sl.appendChild(cv);
+    };
+    const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) drawPage(e.target); }), { rootMargin: "600px 0px" });
+    slots.forEach(sl => io.observe(sl));
+    wrap.addEventListener("contextmenu", e => e.preventDefault());
+  } catch (e) {
+    const box = document.getElementById("in");
+    if (box) box.innerHTML = `<div class="err">${esc(e.code ? errText(e) : e.message)}</div>`;
+  }
+};
+
+/* ----- teacher: books & payments ----- */
+async function tabPayments(pane) {
+  pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
+    <div class="sec-h"><h2 style="font-size:17px">Payment requests</h2><span id="cnt"></span></div>
+    <div class="list" id="l"></div>
+    <div class="sec-h"><h2 style="font-size:17px">Books</h2></div>
+    <div class="list" id="bk"></div></div>`;
+  const $ = id => document.getElementById(id);
+  // book setup
+  const bk = $("bk");
+  for (const b of BOOKS) {
+    let has = false; try { has = (await getDoc(doc(db, "bookKeys", b.id))).exists(); } catch (e) {}
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<div style="display:flex;gap:12px;align-items:center"><img src="${b.cover}" alt="" class="cover" style="width:56px"><div style="min-width:0"><b>${esc(b.title)}</b><p class="hint">${esc(b.sub)} · ₹${b.price}</p>
+      <p class="${has ? "ok-msg" : "err"}" style="margin-top:6px;padding:4px 10px">${has ? "Ready: approved students can read it" : "Not activated yet"}</p></div></div>
+      <div class="field"><label for="k-${b.id}">Book key</label><input id="k-${b.id}" type="text" autocapitalize="none" placeholder="${has ? "Already set. Paste only to replace." : "Paste the key you received"}"></div>
+      <button class="btn btn-navy" data-k>Save key</button>`;
+    c.querySelector("[data-k]").onclick = async () => {
+      const v = document.getElementById("k-" + b.id).value.trim();
+      if (!/^[A-Za-z0-9+/]{43}=$/.test(v)) { toast("That key looks incomplete"); return; }
+      try { await setDoc(doc(db, "bookKeys", b.id), { key: v }); toast("Book activated"); showTab(); } catch (x) { toast(errText(x)); }
+    };
+    bk.appendChild(c);
+  }
+  // requests
+  let ps = [];
+  try { ps = (await getDocs(collection(db, "purchases"))).docs.map(d => ({ id: d.id, ...d.data() })); }
+  catch (x) { $("l").innerHTML = `<div class="err">${esc(errText(x))}</div>`; return; }
+  ps.sort((a, b) => (a.status === "pending" ? 0 : 1) - (b.status === "pending" ? 0 : 1) || b.atMs - a.atMs);
+  const pend = ps.filter(p => p.status === "pending").length, paid = ps.filter(p => p.status === "approved");
+  $("cnt").textContent = `${pend} pending · ₹${paid.reduce((a, p) => a + (p.price || 0), 0)} received`;
+  const l = $("l");
+  if (!ps.length) { l.innerHTML = `<div class="empty"><h3>No payment requests</h3><p>When a student pays for a book, the request appears here for you to approve.</p></div>`; return; }
+  ps.forEach(p => {
+    const d = document.createElement("div"); d.className = "detail"; d.style.marginTop = "0";
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0"><b></b><p class="hint"></p></div><span class="chip ${p.status === "approved" ? "live" : "up"}">${p.status === "approved" ? "Approved" : "Pending"}</span></div>
+      <div class="kv"><span>Transaction ID / note</span><b>${esc(p.utr || "–")}</b></div>
+      ${p.status === "pending" ? `<div class="row"><button class="btn btn-navy" data-a="ok">Approve</button><button class="btn btn-danger" data-a="no">Reject</button></div>` : ""}`;
+    d.querySelector("b").textContent = `${p.name} · ₹${p.price}`;
+    d.querySelector(".hint").textContent = `${p.title} · Class ${p.cls} · ${p.username} · ${fmtDate(p.atMs)}`;
+    const ok = d.querySelector('[data-a="ok"]'), no = d.querySelector('[data-a="no"]');
+    if (ok) ok.onclick = async () => { try { await updateDoc(doc(db, "purchases", p.id), { status: "approved", approvedAtMs: Date.now() }); toast("Approved"); showTab(); } catch (x) { toast(errText(x)); } };
+    if (no) no.onclick = async () => { if (no.dataset.c !== "1") { no.dataset.c = "1"; no.textContent = "Tap again"; return; } try { await deleteDoc(doc(db, "purchases", p.id)); toast("Request rejected"); showTab(); } catch (x) { toast(errText(x)); } };
+    l.appendChild(d);
+  });
+}
+
 /* ----- student: results, rank, profile ----- */
 VIEWS.results = async () => {
   $app.innerHTML = header("My results", S.profile.name) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
@@ -882,7 +1063,7 @@ VIEWS.teacher = async () => {
   <main><div class="in">
     <div class="stats three" id="st"><div><b>–</b><span>Students</span></div><div><b>–</b><span>Tests taken</span></div><div><b>–</b><span>Questions</span></div></div>
     <div class="tabs" role="tablist">
-      <button class="tb" data-t="ts">Test Series</button><button class="tb" data-t="nb">Notices</button><button class="tb" data-t="st">Students</button><button class="tb" data-t="rs">Results</button><button class="tb" data-t="qs">Questions</button><button class="tb" data-t="sy">Syllabus & Notes</button>
+      <button class="tb" data-t="ts">Test Series</button><button class="tb" data-t="nb">Notices</button><button class="tb" data-t="pay">Payments</button><button class="tb" data-t="st">Students</button><button class="tb" data-t="rs">Results</button><button class="tb" data-t="qs">Questions</button><button class="tb" data-t="sy">Syllabus & Notes</button>
     </div>
     <div id="pane"></div>
   </div></main>`;
@@ -899,7 +1080,7 @@ function showTab() {
   $app.querySelectorAll(".tb").forEach(b => b.setAttribute("aria-selected", b.dataset.t === TTAB));
   const pane = document.getElementById("pane");
   pane.innerHTML = `<div class="loading" style="min-height:30vh"><div class="spin"></div></div>`;
-  ({ nb: tabNotices, ts: tabSeries, st: tabStudents, rs: tabResults, qs: tabQuestions, sy: tabSyllabus })[TTAB](pane);
+  ({ pay: tabPayments, nb: tabNotices, ts: tabSeries, st: tabStudents, rs: tabResults, qs: tabQuestions, sy: tabSyllabus })[TTAB](pane);
 }
 const classOptions = (sel, any) => (any ? `<option value="">All classes</option>` : "") + CLASSES.map(c => `<option value="${c}" ${Number(sel) === c ? "selected" : ""}>Class ${c}</option>`).join("");
 const subjectOptions = (c, sel) => subjectsFor(Number(c)).map(s => `<option ${s === sel ? "selected" : ""}>${esc(s)}</option>`).join("");
