@@ -32,6 +32,36 @@ const SUBJECTS_UPPER = ["Physics", "Chemistry", "Mathematics", "Biology", "Engli
 const GLYPH = { Mathematics: "∑", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
 const MEDIUMS = ["English", "Hindi"];
 const DEFAULT_SYLLABUS = {
+  "6|Mathematics|English": ["Patterns in Mathematics", "Lines and Angles", "Number Play", "Data Handling and Presentation", "Prime Time",
+    "Perimeter and Area", "Fractions", "Playing with Constructions", "Symmetry", "The Other Side of Zero"],
+  "6|Mathematics|Hindi": ["गणित में पैटर्न", "रेखाएँ और कोण", "संख्याओं का खेल", "आँकड़ों का प्रबंधन और प्रस्तुतीकरण", "अभाज्य समय",
+    "परिमाप और क्षेत्रफल", "भिन्न", "रचनाओं के साथ खेलना", "सममिति", "शून्य के दूसरी ओर"],
+  "7|Mathematics|English": ["Large Numbers Around Us", "Arithmetic Expressions", "A Peek Beyond the Point", "Expressions using Letter-Numbers",
+    "Parallel and Intersecting Lines", "Number Play", "A Tale of Three Intersecting Lines", "Working with Fractions",
+    "Geometric Twins", "Operations with Integers", "Finding Common Ground", "Another Peek Beyond the Point", "Connecting the Dots",
+    "Constructions and Tilings", "Finding the Unknown"],
+  "7|Mathematics|Hindi": ["हमारे आस-पास की बड़ी संख्याएँ", "अंकगणितीय व्यंजक", "बिंदु से परे एक दृष्टि", "अक्षर-संख्याओं के उपयोगी व्यंजक",
+    "समांतर और प्रतिच्छेदी रेखाएँ", "संख्याओं का खेल", "तीन प्रतिच्छेदी रेखाओं की एक कथा", "भिन्नों के साथ कार्य करना"],
+  "8|Mathematics|English": ["A Square and A Cube", "Power Play", "A Story of Numbers", "Quadrilaterals", "Number Play",
+    "We Distribute, Yet Things Multiply", "Proportional Reasoning", "Fractions in Disguise", "The Baudhayana-Pythagoras Theorem",
+    "Proportional Reasoning - 2", "Exploring Some Geometric Themes", "Tales by Dots and Lines", "Algebra Play", "Area"],
+  "9|Mathematics|English": ["Number Systems", "Polynomials", "Coordinate Geometry", "Linear Equations in Two Variables",
+    "Introduction to Euclid's Geometry", "Lines and Angles", "Triangles", "Quadrilaterals", "Circles", "Heron's Formula",
+    "Surface Areas and Volumes", "Statistics"],
+  "9|Mathematics|Hindi": ["संख्या पद्धति", "बहुपद", "निर्देशांक ज्यामिति", "दो चरों वाले रैखिक समीकरण", "यूक्लिड की ज्यामिति का परिचय",
+    "रेखाएँ और कोण", "त्रिभुज", "चतुर्भुज", "वृत्त", "हीरोन का सूत्र", "पृष्ठीय क्षेत्रफल और आयतन", "सांख्यिकी"],
+  "11|Mathematics|English": ["Sets", "Relations and Functions", "Trigonometric Functions", "Complex Numbers and Quadratic Equations",
+    "Linear Inequalities", "Permutations and Combinations", "Binomial Theorem", "Sequences and Series", "Straight Lines",
+    "Conic Sections", "Introduction to Three Dimensional Geometry", "Limits and Derivatives", "Statistics", "Probability"],
+  "11|Mathematics|Hindi": ["समुच्चय", "संबंध एवं फलन", "त्रिकोणमितीय फलन", "सम्मिश्र संख्याएँ और द्विघातीय समीकरण", "रैखिक असमिकाएँ",
+    "क्रमचय और संचय", "द्विपद प्रमेय", "अनुक्रम तथा श्रेणी", "सरल रेखाएँ", "शंकु परिच्छेद", "त्रिविमीय ज्यामिति का परिचय",
+    "सीमा और अवकलज", "सांख्यिकी", "प्रायिकता"],
+  "12|Mathematics|English": ["Relations and Functions", "Inverse Trigonometric Functions", "Matrices", "Determinants",
+    "Continuity and Differentiability", "Application of Derivatives", "Integrals", "Application of Integrals",
+    "Differential Equations", "Vector Algebra", "Three Dimensional Geometry", "Linear Programming", "Probability"],
+  "12|Mathematics|Hindi": ["संबंध एवं फलन", "प्रतिलोम त्रिकोणमितीय फलन", "आव्यूह", "सारणिक", "सांतत्य तथा अवकलनीयता",
+    "अवकलज के अनुप्रयोग", "समाकलन", "समाकलनों के अनुप्रयोग", "अवकल समीकरण", "सदिश बीजगणित", "त्रि-विमीय ज्यामिति",
+    "रैखिक प्रोग्रामन", "प्रायिकता"],
   "10|Mathematics|Hindi": ["वास्तविक संख्याएँ", "बहुपद", "दो चर वाले रैखिक समीकरण युग्म", "द्विघात समीकरण", "समांतर श्रेढ़ियाँ", "त्रिभुज",
     "निर्देशांक ज्यामिति", "त्रिकोणमिति का परिचय", "त्रिकोणमिति के कुछ अनुप्रयोग", "वृत्त", "वृत्तों से संबंधित क्षेत्रफल",
     "पृष्ठीय क्षेत्रफल और आयतन", "सांख्यिकी", "प्रायिकता"],
@@ -802,7 +832,7 @@ async function tabStudents(pane) {
   pane.innerHTML = `
     <div style="display:flex;flex-direction:column;gap:12px">
     <div id="req"></div>
-    <button class="btn btn-gold" id="add">+ Add student</button>
+    <div class="row"><button class="btn btn-gold" id="add">+ Add student</button><button class="btn btn-line" id="allD">All student details</button></div>
     <form class="card" id="f" hidden novalidate>
       <h3 style="font-size:18px">New student</h3>
       <div class="field"><label for="sn">Full name</label><input id="sn" type="text" placeholder="Student name"></div>
@@ -821,6 +851,7 @@ async function tabStudents(pane) {
     <div class="list" id="l"></div></div>`;
   const $ = id => document.getElementById(id);
   $("add").onclick = () => { $("f").hidden = !$("f").hidden; };
+  $("allD").onclick = () => go("allStudents");
   const autoU = () => { if (!$("su").dataset.touched) $("su").value = slug(($("sn").value.split(" ")[0] || "")) + $("sc").value; };
   $("sn").oninput = autoU; $("sc").onchange = autoU; $("su").oninput = () => $("su").dataset.touched = "1";
   $("sp").value = genPass();
@@ -1055,8 +1086,9 @@ async function tabSyllabus(pane) {
   pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
     <div class="filters"><div class="field"><label for="yc">Class</label><select id="yc">${classOptions(10)}</select></div><div class="field"><label for="ys">Subject</label><select id="ys"></select></div></div>
     <div class="field"><label for="ym">Medium</label><select id="ym">${medOptions("English")}</select></div>
+    <div class="card" id="ov"></div>
     <form class="card" id="f1" novalidate>
-      <h3 style="font-size:18px">Chapters</h3>
+      <h3 style="font-size:18px">Edit chapters</h3>
       <p class="hint">One chapter per line, in order. A subject shows as "Coming soon" until it has chapters.</p>
       <div class="field"><label for="yl">Chapter list</label><textarea id="yl" style="min-height:220px"></textarea></div>
       <button class="btn btn-navy" type="submit">Save chapters</button>
@@ -1076,7 +1108,25 @@ async function tabSyllabus(pane) {
     $("yl").value = chs.join("\n");
     $("nc").innerHTML = chs.map(x => `<option>${esc(x)}</option>`).join("");
     loadNote();
+    overview(c, s, m, chs);
   };
+  async function overview(c, s, m, chs) {
+    const ov = $("ov");
+    ov.innerHTML = `<h3 style="font-size:18px">Syllabus overview</h3><p class="hint">Class ${c} · ${esc(s)} · ${m} medium</p><div class="spin"></div>`;
+    if (!chs.length) { ov.innerHTML = `<h3 style="font-size:18px">Syllabus overview</h3><p class="hint">No chapters yet for Class ${c} · ${esc(s)} · ${m} medium. Add them below.</p>`; return; }
+    let counts = {}, notes = {};
+    try {
+      (await getDocs(query(collection(db, "questions"), where("cls", "==", c), where("subject", "==", s)))).docs.forEach(d => { const q = d.data(); if (medOf(q) === m) counts[q.chapter] = (counts[q.chapter] || 0) + 1; });
+      const nd = await Promise.all(chs.map(ch => getDoc(doc(db, "notes", `${c}_${s}_${ch}`)).catch(() => null)));
+      nd.forEach((d, i) => notes[chs[i]] = !!(d && d.exists() && d.data().text));
+    } catch (e) {}
+    const totalQ = chs.reduce((a, ch) => a + (counts[ch] || 0), 0), ready = chs.filter(ch => (counts[ch] || 0) >= CHAPTER_Q).length;
+    ov.innerHTML = `<h3 style="font-size:18px">Syllabus overview</h3><p class="hint">Class ${c} · ${esc(s)} · ${m} medium</p>
+      <div class="stats three"><div><b>${chs.length}</b><span>Chapters</span></div><div><b>${totalQ}</b><span>Questions</span></div><div><b>${ready}/${chs.length}</b><span>Tests ready</span></div></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>#</th><th>Chapter</th><th>Questions</th><th>Notes</th></tr></thead><tbody>
+      ${chs.map((ch, i) => { const n = counts[ch] || 0; return `<tr><td>${i + 1}</td><td>${esc(ch)}</td><td class="${n >= CHAPTER_Q ? "g" : n ? "w" : "r"}">${n}</td><td class="${notes[ch] ? "g" : "r"}">${notes[ch] ? "Added" : "–"}</td></tr>`; }).join("")}
+      </tbody></table></div><p class="hint">A chapter test needs at least ${CHAPTER_Q} questions.</p>`;
+  }
   const loadNote = async () => {
     $("nt").value = "";
     if (!$("nc").value) return;
@@ -1241,3 +1291,48 @@ async function tabNotices(pane) {
   }
   load();
 }
+
+/* ----- teacher: all student details ----- */
+VIEWS.allStudents = async () => {
+  $app.innerHTML = header("All student details", "JRP Education", true) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  let users = [], secrets = {}, results = [];
+  try {
+    const [u, sc, r] = await Promise.all([getDocs(collection(db, "users")), getDocs(collection(db, "secrets")), getDocs(collection(db, "results"))]);
+    users = u.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.status !== "rejected");
+    sc.docs.forEach(d => secrets[d.id] = d.data().password || "");
+    results = r.docs.map(d => d.data());
+  } catch (e) { document.getElementById("in").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+  const stat = {};
+  results.forEach(r => { const x = stat[r.uid] || (stat[r.uid] = { n: 0, sum: 0, last: 0 }); x.n++; x.sum += Math.max(0, r.score) / r.max; x.last = Math.max(x.last, r.atMs || 0); });
+  const rows = users.map(u => {
+    const st = stat[u.id] || { n: 0, sum: 0, last: 0 };
+    return { Name: u.name, Class: u.cls, Medium: medOf(u), Username: u.username, Password: secrets[u.id] || "", Mobile: u.mobile || "", "Father's name": u.father || "", School: u.school || "",
+      Status: u.status === "pending" ? "Pending" : u.active === false ? "Inactive" : "Active", "Tests taken": st.n, "Average %": st.n ? Math.round(st.sum / st.n * 100) : "", "Last test": st.last ? fmtDate(st.last) : "" };
+  }).sort((a, b) => a.Class - b.Class || a.Name.localeCompare(b.Name));
+  const cols = rows.length ? Object.keys(rows[0]) : [];
+  const box = document.getElementById("in");
+  box.innerHTML = `
+    <div class="filters"><div class="field"><label for="ac">Class</label><select id="ac">${classOptions("", true)}</select></div><div class="field"><label for="am">Medium</label><select id="am"><option value="">All mediums</option>${medOptions("")}</select></div></div>
+    <div class="sec-h"><h2 style="font-size:17px">Students</h2><span id="cnt"></span></div>
+    <div class="row"><button class="btn btn-navy" id="dl">Download Excel file</button><button class="btn btn-line" id="cp">Copy all</button></div>
+    <div class="tbl-wrap"><table class="tbl" id="t"></table></div>`;
+  const filtered = () => rows.filter(r => (!ac.value || r.Class === Number(ac.value)) && (!am.value || r.Medium === am.value));
+  const ac = document.getElementById("ac"), am = document.getElementById("am");
+  const draw = () => {
+    const fr = filtered();
+    document.getElementById("cnt").textContent = fr.length;
+    document.getElementById("t").innerHTML = fr.length
+      ? `<thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${fr.map(r => `<tr>${cols.map(c => `<td>${esc(r[c])}</td>`).join("")}</tr>`).join("")}</tbody>`
+      : `<tbody><tr><td>No students match.</td></tr></tbody>`;
+  };
+  ac.onchange = draw; am.onchange = draw; draw();
+  const csv = () => { const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`; return "﻿" + [cols.map(q).join(","), ...filtered().map(r => cols.map(c => q(r[c])).join(","))].join("\r\n"); };
+  document.getElementById("dl").onclick = () => {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([csv()], { type: "text/csv;charset=utf-8" }));
+    a.download = `JRP-students-${new Date().toISOString().slice(0, 10)}.csv`; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  };
+  document.getElementById("cp").onclick = async () => {
+    const txt = filtered().map(r => `${r.Name} (Class ${r.Class}, ${r.Medium})\nUsername: ${r.Username}  Password: ${r.Password}\nMobile: ${r.Mobile}  Father: ${r["Father's name"]}\nTests: ${r["Tests taken"]}  Avg: ${r["Average %"]}${r["Average %"] !== "" ? "%" : ""}`).join("\n\n");
+    try { await navigator.clipboard.writeText(txt); toast("Copied"); } catch (e) { toast("Copy not allowed on this phone"); }
+  };
+};

@@ -201,3 +201,9 @@ main .in{display:flex;flex-direction:column;gap:16px;padding-block:18px 110px}
 .banner.live p{color:var(--navy);opacity:.8}
 .nav button{position:relative}
 .nav button.dot::after{content:"";position:absolute;top:4px;left:calc(50% + 8px);width:9px;height:9px;border-radius:50%;background:var(--bad);border:2px solid var(--surface)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.tbl{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.tbl th{background:var(--bg);font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);position:sticky;top:0}
+.tbl tr:last-child td{border-bottom:0}
+.tbl td.g{color:var(--good);font-weight:700}.tbl td.w{color:var(--warn);font-weight:700}.tbl td.r{color:var(--bad)}
