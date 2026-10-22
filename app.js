@@ -1011,6 +1011,7 @@ Rules:
 - Write maths in plain text with symbols like ², ³, √, π, ×, ÷, θ. Do not use LaTeX or code blocks.
 - If a question is not about studies, politely say you only help with studies and invite a maths question.
 - If you are not sure, say so and suggest asking the teacher at JRP Education.
+- Address the student as "student" (in Hindi: "विद्यार्थी") or by first name. Never call the student Sir, Madam or Ma'am.
 - Never claim to be a human. Never share personal data.`;
 }
 async function narexInit() {
@@ -1058,8 +1059,8 @@ VIEWS.narex = () => {
   const showLeft = () => { const L = narexLimit(), l = L - narexUsed(); left.textContent = l > 0 ? `${l} of ${L} questions left today` : "Daily limit reached. Come back tomorrow."; cs.disabled = l <= 0; };
   if (T) bubble("bot", narexHtml(`Hello Sir! I'm NareX. I can help you prepare material for JRP Education.\n\nTry:\n• "Class 10 Polynomials ke 10 MCQ Hindi mein banao"\n• "Write notes and formulas for Class 9 Number Systems"\n• "Kal chhutti ka notice likho"\n\nTap Copy under my answer, then paste MCQs into Questions → Paste many.`));
   else bubble("bot", narexHtml(hi
-    ? `नमस्ते ${S.profile.name.split(" ")[0]}! मैं NareX हूँ। गणित का कोई भी सवाल पूछो, मैं स्टेप-बाय-स्टेप समझाऊँगा।\n\nजैसे: "x² − 5x + 6 = 0 हल करो" या "sin 30° + cos 60° का मान?"`
-    : `Hi ${S.profile.name.split(" ")[0]}! I'm NareX. Ask me any maths doubt and I'll explain it step by step.\n\nFor example: "Solve x² − 5x + 6 = 0" or "What is sin 30° + cos 60°?"`));
+    ? `नमस्ते विद्यार्थी! मैं NareX हूँ। गणित का कोई भी सवाल पूछो, मैं स्टेप-बाय-स्टेप समझाऊँगा।\n\nजैसे: "x² − 5x + 6 = 0 हल करो" या "sin 30° + cos 60° का मान?"`
+    : `Hi student! I'm NareX. Ask me any maths doubt and I'll explain it step by step.\n\nFor example: "Solve x² − 5x + 6 = 0" or "What is sin 30° + cos 60°?"`));
   narexHist.forEach(m => { const b = bubble(m.who, narexHtml(m.text)); if (m.who === "bot") addCopy(b, m.text); });
   showLeft();
   cq.addEventListener("input", () => { cq.style.height = "auto"; cq.style.height = Math.min(cq.scrollHeight, 140) + "px"; });
