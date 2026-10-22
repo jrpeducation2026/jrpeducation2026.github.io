@@ -1,0 +1,1138 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth, initializeAuth, inMemoryPersistence, onAuthStateChanged, signInWithEmailAndPassword,
+  signOut, createUserWithEmailAndPassword, updatePassword, sendEmailVerification
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getFirestore, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where,
+  getDocs, orderBy, limit, serverTimestamp, writeBatch
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig } from "./firebase-config.js";
+
+/* ---------- setup ---------- */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+// second instance so the teacher stays signed in while creating student accounts
+const app2 = initializeApp(firebaseConfig, "secondary");
+const auth2 = initializeAuth(app2, { persistence: inMemoryPersistence });
+
+// teacher account is identified by a hash so the official email is not shown in the app's code
+const ADMIN_HASH = "4350f11b33b0b686dafc573981e8d6fb067f8b092816e47c0c18958003679c36";
+async function isTeacherEmail(email) {
+  if (!email) return false;
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(email.trim().toLowerCase()));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("") === ADMIN_HASH;
+}
+const STUDENT_DOMAIN = "students.jrpeducation.app";
+const CLASSES = [6, 7, 8, 9, 10, 11, 12];
+const SUBJECTS_LOWER = ["Mathematics", "Science", "English", "Hindi", "Social Science", "Sanskrit"];
+const SUBJECTS_UPPER = ["Physics", "Chemistry", "Mathematics", "Biology", "English", "Hindi"];
+const GLYPH = { Mathematics: "∑", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
+const DEFAULT_SYLLABUS = {
+  "10|Mathematics": ["Real Numbers", "Polynomials", "Pair of Linear Equations in Two Variables", "Quadratic Equations",
+    "Arithmetic Progressions", "Triangles", "Coordinate Geometry", "Introduction to Trigonometry",
+    "Some Applications of Trigonometry", "Circles", "Areas Related to Circles", "Surface Areas and Volumes",
+    "Statistics", "Probability"]
+};
+const FULL = "Full Syllabus Test";
+const MARK_RIGHT = 4, MARK_WRONG = 1, CHAPTER_Q = 10, FULL_Q = 25;
+const L = "ABCD";
+
+const S = { user: null, profile: null, admin: false, myResults: null, syllabus: {} };
+const $app = document.getElementById("app");
+const $nav = document.getElementById("nav");
+
+/* ---------- helpers ---------- */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const subjectsFor = c => (c >= 11 ? SUBJECTS_UPPER : SUBJECTS_LOWER);
+const sylKey = (c, s) => `${c}|${s}`;
+const testKey = (c, s, ch) => `${c}|${s}|${ch}`;
+const fmtTime = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const initials = n => String(n || "?").trim().split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmtDate = ms => ms ? new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+const usernameToEmail = u => u.includes("@") ? u.trim().toLowerCase() : `${u.trim().toLowerCase()}@${STUDENT_DOMAIN}`;
+let toastT;
+function toast(m) { const t = document.getElementById("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
+function loading(msg = "Loading…") { $app.innerHTML = `<div class="loading"><div><div class="spin"></div>${esc(msg)}</div></div>`; }
+function errText(e) {
+  const c = e?.code || "";
+  if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found") || c.includes("invalid-email")) return "Incorrect username or password.";
+  if (c.includes("too-many-requests")) return "Too many attempts. Please wait a few minutes and try again.";
+  if (c.includes("network")) return "No internet connection. Please check your network.";
+  if (c.includes("email-already-in-use")) return "This username is already taken.";
+  if (c.includes("weak-password")) return "Password must be at least 6 characters.";
+  if (c.includes("permission-denied")) return "You don't have permission for this action.";
+  return e?.message || "Something went wrong. Please try again.";
+}
+const LOGO = "logo.png";
+function header(title, sub, backTo) {
+  return `<div class="top"><div class="in">
+    ${backTo ? `<button class="back" data-back aria-label="Back">←</button>` : ""}
+    <div class="top-mark"><img src="${LOGO}" alt=""></div>
+    <div class="tt"><h2>${esc(title)}</h2>${sub ? `<small>${esc(sub)}</small>` : ""}</div>
+  </div></div>`;
+}
+
+/* ---------- simple router with phone back button support ---------- */
+const stack = [];
+let current = null;
+function go(view, args = {}, opts = {}) {
+  if (current && !opts.replace) stack.push(current);
+  current = { view, args };
+  if (!opts.replace) history.pushState({ d: stack.length }, "");
+  render();
+}
+function back() { if (stack.length) { current = stack.pop(); render(); } }
+function resetTo(view, args = {}) { stack.length = 0; current = { view, args }; render(); }
+window.addEventListener("popstate", () => {
+  if (TEST.running) { history.pushState({}, ""); toast("Submit the test before leaving."); return; }
+  back();
+});
+function render() {
+  window.scrollTo(0, 0);
+  const v = VIEWS[current.view];
+  const tabs = { home: "home", subjects: "home", chapters: "home", notes: "home", results: "results", board: "board", profile: "profile" };
+  $nav.hidden = !tabs[current.view];
+  $nav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tabs[current.view] ? "page" : "false"));
+  v(current.args);
+}
+$nav.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) resetTo(b.dataset.tab); });
+$app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); });
+
+/* ---------- data ---------- */
+async function getSyllabus(c, s) {
+  const k = sylKey(c, s);
+  if (S.syllabus[k]) return S.syllabus[k];
+  let list = DEFAULT_SYLLABUS[k] || [];
+  try { const d = await getDoc(doc(db, "syllabus", `${c}_${s}`)); if (d.exists() && Array.isArray(d.data().chapters) && d.data().chapters.length) list = d.data().chapters; } catch (e) {}
+  S.syllabus[k] = list; return list;
+}
+async function loadMyResults(force) {
+  if (S.myResults && !force) return S.myResults;
+  const snap = await getDocs(query(collection(db, "results"), where("uid", "==", S.user.uid)));
+  S.myResults = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.atMs || 0) - (a.atMs || 0));
+  return S.myResults;
+}
+
+/* ---------- auth ---------- */
+onAuthStateChanged(auth, async user => {
+  S.user = user; S.profile = null; S.admin = false; S.myResults = null; stack.length = 0;
+  if (!user) { ALERTS.notices = ALERTS.tests = ALERTS.live = 0; updateBadge(); }
+  if (!user) { resetTo("login"); return; }
+  loading();
+  try {
+    if (await isTeacherEmail(user.email)) {
+      if (!user.emailVerified) { await user.reload(); }
+      if (!auth.currentUser.emailVerified) { resetTo("verify"); return; }
+      S.admin = true; resetTo("teacher"); return;
+    }
+    const p = await getDoc(doc(db, "users", user.uid));
+    if (!p.exists() || p.data().active === false) {
+      await signOut(auth);
+      LOGIN_MSG = "This account is not active. Please contact JRP Education.";
+      return;
+    }
+    S.profile = { id: user.uid, ...p.data() };
+    resetTo("home");
+  } catch (e) { LOGIN_MSG = errText(e); await signOut(auth); }
+});
+let LOGIN_MSG = "";
+
+/* ---------- views ---------- */
+const VIEWS = {};
+
+VIEWS.login = () => {
+  let role = "s";
+  $app.innerHTML = `
+  <div class="band"><div class="in"><div class="crest"><img src="${LOGO}" alt="JRP Education logo"></div></div></div>
+  <main><div class="in">
+    <form class="card lift" id="f" novalidate>
+      <div class="seg" role="tablist">
+        <button type="button" role="tab" id="segS" aria-selected="true">Student</button>
+        <button type="button" role="tab" id="segT" aria-selected="false">Teacher</button>
+      </div>
+      <h1 id="h" style="font-size:24px">Student login</h1>
+      <div class="field"><label for="u" id="ul">Username</label><input id="u" type="text" autocomplete="username" autocapitalize="none" placeholder="e.g. rahul10"></div>
+      <div class="field"><label for="p">Password</label><input id="p" type="password" autocomplete="current-password" placeholder="Password"></div>
+      <div class="err" id="err" ${LOGIN_MSG ? "" : "hidden"}>${esc(LOGIN_MSG)}</div>
+      <button class="btn btn-navy" id="go" type="submit">Log in</button>
+      <p class="hint" id="hint">Your username and password are provided by your teacher.</p>
+    </form>
+  </div></main>`;
+  LOGIN_MSG = "";
+  const set = r => {
+    role = r;
+    segS.setAttribute("aria-selected", r === "s"); segT.setAttribute("aria-selected", r === "t");
+    h.textContent = r === "s" ? "Student login" : "Teacher login";
+    ul.textContent = r === "s" ? "Username" : "Email";
+    u.placeholder = r === "s" ? "e.g. rahul10" : "Teacher email";
+    u.type = r === "s" ? "text" : "email";
+    hint.textContent = r === "s" ? "Your username and password are provided by your teacher." : "For JRP Education staff only.";
+  };
+  const { segS, segT, h, ul, u, p, hint, err, f } = Object.fromEntries([...$app.querySelectorAll("[id]")].map(x => [x.id, x]));
+  segS.onclick = () => set("s"); segT.onclick = () => set("t");
+  f.onsubmit = async e => {
+    e.preventDefault(); err.hidden = true;
+    if (!u.value.trim() || !p.value) { err.textContent = "Enter your username and password."; err.hidden = false; return; }
+    const btn = document.getElementById("go"); btn.disabled = true; btn.textContent = "Logging in…";
+    try { await signInWithEmailAndPassword(auth, usernameToEmail(u.value), p.value); }
+    catch (x) { err.textContent = errText(x); err.hidden = false; btn.disabled = false; btn.textContent = "Log in"; }
+  };
+};
+
+VIEWS.verify = () => {
+  $app.innerHTML = header("Verify email", "Teacher account") + `
+  <main><div class="in">
+    <div class="card">
+      <h2 style="font-size:20px">Check your inbox</h2>
+      <p>A verification link was sent to the teacher email. Open Gmail, tap the link, then come back and tap <b>I have verified</b>. Check the Spam folder if it is not in the inbox.</p>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" id="ok">I have verified</button>
+      <div class="row"><button class="btn btn-line" id="re">Resend link</button><button class="btn btn-line" id="out">Log out</button></div>
+    </div>
+  </div></main>`;
+  ok.onclick = async () => { await auth.currentUser.reload(); if (auth.currentUser.emailVerified) { await auth.currentUser.getIdToken(true); S.admin = true; resetTo("teacher"); } else { err.textContent = "Not verified yet. Tap the link in the email first."; err.hidden = false; } };
+  re.onclick = async () => { try { await sendEmailVerification(auth.currentUser); toast("Verification link sent"); } catch (x) { toast(errText(x)); } };
+  out.onclick = () => signOut(auth);
+};
+
+/* ----- student: home ----- */
+VIEWS.home = () => {
+  const p = S.profile;
+  $app.innerHTML = `
+  <div class="band"><div class="in"><div class="crest"><img src="${LOGO}" alt="JRP Education logo"></div></div></div>
+  <main><div class="in">
+    <div class="card lift">
+      <h1 style="font-size:22px">Welcome, ${esc((p.name || "").split(" ")[0])}</h1>
+      <p class="hint" style="font-size:15px">Class ${esc(p.cls)} · Select a class to see subjects and tests.</p>
+    </div>
+    <button class="banner live" id="liveAlert" hidden></button>
+    <div class="list" id="notices" hidden></div>
+    <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all</button></div>
+    <div class="chs" id="series"></div>
+    <div class="sec-h"><h2>Select class</h2><span>6th to 12th</span></div>
+    <div class="classes" id="cg"></div>
+    <button class="banner" data-tab-go="board">
+      <div class="ic">★</div>
+      <div><h3>Leaderboard</h3><p>See where you rank among students of your class.</p></div>
+    </button>
+  </div></main>`;
+  const cg = document.getElementById("cg");
+  CLASSES.forEach(n => {
+    const b = document.createElement("button");
+    b.className = "cls" + (n === 10 || n === 12 ? " board" : "") + (Number(p.cls) === n ? " mine" : "");
+    b.innerHTML = `<b>${n}<sup>th</sup></b><span>${Number(p.cls) === n ? "Your class" : (n === 10 || n === 12 ? "Board" : "Class")}</span>`;
+    b.onclick = () => go("subjects", { cls: n });
+    cg.appendChild(b);
+  });
+  $app.querySelector("[data-tab-go]").onclick = () => resetTo("board");
+  document.getElementById("allT").onclick = () => go("series");
+  fillSeries(document.getElementById("series"), false);
+  fillNotices(document.getElementById("notices"), false);
+};
+
+VIEWS.subjects = async ({ cls }) => {
+  $app.innerHTML = header(`Class ${cls}`, "Select subject", true) + `<main><div class="in"><div class="subjects" id="sg"></div></div></main>`;
+  const sg = document.getElementById("sg");
+  const subs = subjectsFor(cls);
+  const lists = await Promise.all(subs.map(s => getSyllabus(cls, s)));
+  subs.forEach((s, i) => {
+    const n = lists[i].length;
+    const b = document.createElement("button");
+    b.className = "sub" + (n ? " on" : "");
+    b.innerHTML = `<div class="glyph">${esc(GLYPH[s] || s[0])}</div><h3>${esc(s)}</h3>` + (n ? `<span>${n} chapters</span>` : `<span class="soon">Coming soon</span>`);
+    b.onclick = () => n ? go("chapters", { cls, subject: s }) : toast("Tests for this subject will be added soon.");
+    sg.appendChild(b);
+  });
+};
+
+VIEWS.chapters = async ({ cls, subject }) => {
+  $app.innerHTML = header(subject, `Class ${cls} · Chapter-wise`, true) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  const [chs, mine] = await Promise.all([getSyllabus(cls, subject), loadMyResults().catch(() => [])]);
+  const best = {};
+  mine.forEach(r => { if (!best[r.testKey] || r.score > best[r.testKey].score) best[r.testKey] = r; });
+  const fb = best[testKey(cls, subject, FULL)];
+  const box = document.getElementById("in");
+  box.innerHTML = `
+    <div class="full">
+      <h3>Full Syllabus Test</h3>
+      <p>A mixed paper from all chapters in board exam format.</p>
+      <div class="meta"><span>${FULL_Q} questions</span><span>+${MARK_RIGHT} / −${MARK_WRONG}</span>${fb ? `<span>Best: ${fb.score}/${fb.max}</span>` : ""}</div>
+      <button class="btn btn-gold" id="full" style="align-self:flex-start">Start test</button>
+    </div>
+    <div class="sec-h"><h2>Chapters</h2><span>${chs.length}</span></div>
+    <div class="chs" id="chs"></div>`;
+  document.getElementById("full").onclick = () => go("test", { cls, subject, chapter: FULL });
+  const list = document.getElementById("chs");
+  chs.forEach((c, i) => {
+    const r = best[testKey(cls, subject, c)];
+    const d = document.createElement("div"); d.className = "ch";
+    d.innerHTML = `<div class="ch-top"><div class="ch-n">${i + 1}</div><div class="ch-t"><h3>${esc(c)}</h3>
+      <span class="${r ? "done" : ""}">${r ? `Best score: ${r.score}/${r.max}` : `${CHAPTER_Q} questions · Not attempted`}</span></div></div>
+      <div class="ch-b"><button class="btn btn-gold" data-a="t">Take test</button><button class="btn btn-line" data-a="n">Notes</button></div>`;
+    d.querySelector('[data-a="t"]').onclick = () => go("test", { cls, subject, chapter: c });
+    d.querySelector('[data-a="n"]').onclick = () => go("notes", { cls, subject, chapter: c });
+    list.appendChild(d);
+  });
+};
+
+VIEWS.notes = async ({ cls, subject, chapter }) => {
+  $app.innerHTML = header(chapter, `Class ${cls} · ${subject} · Notes`, true) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  let text = "";
+  try { const d = await getDoc(doc(db, "notes", `${cls}_${subject}_${chapter}`)); if (d.exists()) text = d.data().text || ""; } catch (e) {}
+  document.getElementById("in").innerHTML = text
+    ? `<div class="card"><div class="notes">${esc(text)}</div></div>`
+    : `<div class="empty"><h3>Notes coming soon</h3><p>Your teacher has not added notes for this chapter yet.</p></div>`;
+};
+
+/* ----- student: test ----- */
+const TEST = { running: false, timer: null };
+VIEWS.test = async ({ cls, subject, chapter }) => {
+  loading("Preparing your test…");
+  let qs = [];
+  try {
+    const cons = [where("cls", "==", Number(cls)), where("subject", "==", subject)];
+    if (chapter !== FULL) cons.push(where("chapter", "==", chapter));
+    const snap = await getDocs(query(collection(db, "questions"), ...cons));
+    qs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch (e) { $app.innerHTML = header(chapter, subject, true) + `<main><div class="in"><div class="err">${esc(errText(e))}</div></div></main>`; return; }
+  if (!qs.length) {
+    $app.innerHTML = header(chapter, `Class ${cls} · ${subject}`, true) + `<main><div class="in"><div class="empty"><h3>Questions coming soon</h3><p>Your teacher has not added questions for this test yet.</p></div></div></main>`;
+    return;
+  }
+  qs = shuffle(qs).slice(0, chapter === FULL ? FULL_Q : CHAPTER_Q);
+  const N = qs.length, LIMIT = Math.ceil(N * 1.5) * 60;
+  // intro
+  $app.innerHTML = header(chapter, `Class ${cls} · ${subject}`, true) + `
+  <main><div class="in">
+    <div class="card">
+      <div class="qtag">${esc(subject)}</div>
+      <h1 style="font-size:24px">${esc(chapter)}</h1>
+      <div class="stats three"><div><b>${N}</b><span>Questions</span></div><div><b>${LIMIT / 60}</b><span>Minutes</span></div><div><b>${N * MARK_RIGHT}</b><span>Max marks</span></div></div>
+      <ul class="hint" style="margin:0;padding-left:20px;font-size:15px;display:flex;flex-direction:column;gap:4px">
+        <li>+${MARK_RIGHT} for a correct answer, −${MARK_WRONG} for a wrong answer, 0 if skipped.</li>
+        <li>Tap an option again to clear it.</li>
+        <li>The test submits automatically when time runs out.</li>
+      </ul>
+      <button class="btn btn-navy" id="start">Start test</button>
+    </div>
+  </div></main>`;
+  document.getElementById("start").onclick = () => {
+    const t0 = Date.now();
+    runTest({
+      qs, startMs: t0, deadlineMs: t0 + LIMIT * 1000,
+      tag: q => chapter === FULL ? q.chapter : `${subject} · Class ${cls}`,
+      onFinish: async ({ ans, timeSec, auto }) => {
+        const sc = scoreOf(qs, ans);
+        const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls),
+          cls: Number(cls), subject, chapter, testKey: testKey(cls, subject, chapter), ...sc, timeSec, atMs: Date.now(), at: serverTimestamp() };
+        loading("Saving your result…");
+        let saved = true;
+        try { await addDoc(collection(db, "results"), rec); S.myResults = null; } catch (e) { saved = false; }
+        showResult({ rec, qs, ans, auto, saved, retake: true });
+      }
+    });
+  };
+};
+
+function scoreOf(qs, ans) {
+  let correct = 0, wrong = 0, skipped = 0;
+  ans.forEach((a, i) => { if (a === null || a === undefined) skipped++; else if (a === qs[i].ans) correct++; else wrong++; });
+  return { score: correct * MARK_RIGHT - wrong * MARK_WRONG, max: qs.length * MARK_RIGHT, correct, wrong, skipped, total: qs.length };
+}
+
+// generic timed test screen; storeKey keeps answers on this phone so a reopened test resumes
+function runTest({ qs, startMs, deadlineMs, tag, onFinish, storeKey }) {
+  const N = qs.length;
+  let ans = Array(N).fill(null);
+  if (storeKey) { try { const s = JSON.parse(localStorage.getItem(storeKey)); if (Array.isArray(s) && s.length === N) ans = s; } catch (e) {} }
+  const keep = () => { if (storeKey) try { localStorage.setItem(storeKey, JSON.stringify(ans)); } catch (e) {} };
+  let cur = 0;
+  TEST.running = true;
+  $nav.hidden = true;
+  $app.innerHTML = `
+  <div class="tbar"><div class="in"><div class="qcount" id="qc"></div><div class="prog"><i id="pf"></i></div><div class="timer" id="tm"></div></div></div>
+  <main><div class="in">
+    <div class="qtag" id="qt"></div>
+    <p class="qtext" id="qx"></p>
+    <div class="opts" id="op"></div>
+    <div class="row"><button class="btn btn-line" id="pv">← Previous</button><button class="btn btn-navy" id="nx">Next →</button></div>
+    <div class="sec-h"><h2 style="font-size:16px">Question palette</h2><span id="cnt"></span></div>
+    <div class="palette" id="pl"></div>
+    <button class="btn btn-gold" id="sb">Submit test</button>
+    <div class="confirm" id="cf" hidden><p id="cft"></p><div class="row"><button class="btn btn-navy" id="yes">Submit</button><button class="btn btn-line" id="no">Continue test</button></div></div>
+  </div></main>`;
+  const el = id => document.getElementById(id);
+  for (let i = 0; i < N; i++) { const b = document.createElement("button"); b.className = "pal"; b.textContent = i + 1; b.onclick = () => { cur = i; draw(); }; el("pl").appendChild(b); }
+  function draw() {
+    const q = qs[cur];
+    el("qc").textContent = `Q ${cur + 1}/${N}`;
+    el("qt").textContent = tag(q);
+    el("qx").textContent = `${cur + 1}. ${q.q}`;
+    const op = el("op"); op.innerHTML = "";
+    q.opts.forEach((t, i) => {
+      const b = document.createElement("button"); b.className = "opt"; b.setAttribute("aria-pressed", ans[cur] === i);
+      b.innerHTML = `<span class="bub">${L[i]}</span><span></span>`; b.lastChild.textContent = t;
+      b.onclick = () => { ans[cur] = ans[cur] === i ? null : i; keep(); draw(); };
+      op.appendChild(b);
+    });
+    el("pv").disabled = cur === 0; el("nx").disabled = cur === N - 1;
+    const done = ans.filter(a => a !== null).length;
+    el("pf").style.width = (done / N * 100) + "%";
+    el("cnt").textContent = `${done} of ${N} answered`;
+    [...el("pl").children].forEach((b, i) => { b.classList.toggle("done", ans[i] !== null); b.classList.toggle("cur", i === cur); });
+    el("cf").hidden = true;
+  }
+  const tick = () => { const left = Math.floor((deadlineMs - Date.now()) / 1000); el("tm").textContent = fmtTime(left); el("tm").classList.toggle("low", left <= 60); if (left <= 0) finish(true); };
+  el("pv").onclick = () => { cur--; draw(); window.scrollTo(0, 0); };
+  el("nx").onclick = () => { cur++; draw(); window.scrollTo(0, 0); };
+  el("sb").onclick = () => { const l = ans.filter(a => a === null).length; el("cft").textContent = l ? `${l} question${l > 1 ? "s are" : " is"} unanswered. Submit anyway?` : "All questions answered. Submit the test?"; el("cf").hidden = false; el("cf").scrollIntoView({ behavior: "smooth", block: "center" }); };
+  el("no").onclick = () => el("cf").hidden = true;
+  el("yes").onclick = () => finish(false);
+  clearInterval(TEST.timer); TEST.timer = setInterval(tick, 1000); draw(); tick();
+
+  let finished = false;
+  function finish(auto) {
+    if (finished) return; finished = true;
+    clearInterval(TEST.timer); TEST.running = false;
+    const timeSec = Math.max(0, Math.floor((Math.min(Date.now(), deadlineMs) - startMs) / 1000));
+    onFinish({ ans: ans.slice(), timeSec, auto });
+    if (storeKey) try { localStorage.removeItem(storeKey); } catch (e) {}
+  }
+}
+
+function showResult({ rec, qs, ans, auto, saved, retake, rankText }) {
+  $nav.hidden = true;
+  const pct = Math.max(0, Math.round(rec.score / rec.max * 100));
+  const verdict = pct >= 90 ? "Outstanding performance." : pct >= 70 ? "Good work. Review the questions you missed." : pct >= 40 ? "Fair attempt. Revise this chapter and try again." : "Needs more practice. Read the solutions below carefully.";
+  $app.innerHTML = header("Result", `${rec.subject} · Class ${rec.cls}`) + `
+  <main><div class="in">
+    <div class="card">
+      <div class="qtag">${esc(rec.chapter)}</div>
+      ${auto ? `<p class="hint">Time was up, so the test was submitted automatically.</p>` : ""}
+      <div class="score"><b>${rec.score}</b><span>/ ${rec.max} · ${pct}%</span></div>
+      <p style="font-size:17px;font-weight:500">${verdict}</p>
+      <div class="stats"><div class="g"><b>${rec.correct}</b><span>Correct</span></div><div class="r"><b>${rec.wrong}</b><span>Wrong</span></div><div><b>${rec.skipped}</b><span>Skipped</span></div><div><b>${fmtTime(rec.timeSec)}</b><span>Time</span></div></div>
+      ${saved ? "" : `<div class="err">Your result could not be saved. Check your internet connection.</div>`}
+      ${rankText ? `<div class="ok-msg" style="font-size:16px"><b>${esc(rankText)}</b></div>` : ""}
+      <div class="row">${retake ? `<button class="btn btn-navy" id="again">Retake test</button>` : ""}<button class="btn btn-line" id="done">Done</button></div>
+    </div>
+    <h2 style="font-size:20px">Answer review</h2>
+    <div class="list" id="rv"></div>
+  </div></main>`;
+  const rv = document.getElementById("rv");
+  qs.forEach((q, i) => {
+    const a = ans[i] ?? null, cls = a === null ? "skip" : (a === q.ans ? "ok" : "no");
+    const d = document.createElement("div"); d.className = "rv " + cls;
+    d.innerHTML = `<div class="rv-h"><span><b>Q${i + 1}</b> · ${esc(q.chapter)}</span><span class="tag">${cls === "ok" ? `Correct +${MARK_RIGHT}` : cls === "no" ? `Wrong −${MARK_WRONG}` : "Skipped"}</span></div>
+      <p class="rv-q">${esc(q.q)}</p>
+      <p class="rv-a">${a !== null && a !== q.ans ? `<span class="y">Your answer: ${L[a]}) ${esc(q.opts[a])}</span><br>` : ""}<span class="c">Correct answer: ${L[q.ans]}) ${esc(q.opts[q.ans])}</span></p>
+      ${q.sol ? `<p class="rv-ex">${esc(q.sol)}</p>` : ""}`;
+    rv.appendChild(d);
+  });
+  if (retake) document.getElementById("again").onclick = () => go("test", { cls: rec.cls, subject: rec.subject, chapter: rec.chapter }, { replace: true });
+  document.getElementById("done").onclick = () => { history.back(); };
+}
+
+/* ----- "new" alerts: remembered per student on this phone ----- */
+const seenKey = k => `jrp-seen-${k}-${S.user?.uid}`;
+const getSeen = k => { try { return Number(localStorage.getItem(seenKey(k))) || 0; } catch (e) { return 0; } };
+const markSeen = k => { try { localStorage.setItem(seenKey(k), String(Date.now())); } catch (e) {} };
+const ALERTS = { notices: 0, tests: 0, live: 0 };
+function updateBadge() {
+  const n = ALERTS.notices + ALERTS.tests + ALERTS.live;
+  try { if (navigator.setAppBadge) n ? navigator.setAppBadge(n) : navigator.clearAppBadge(); } catch (e) {}
+  const dot = $nav.querySelector('[data-tab="home"]'); if (dot) dot.classList.toggle("dot", n > 0);
+}
+
+/* ----- test series (scheduled tests) ----- */
+const tStatus = t => { const n = Date.now(); return n < t.startMs ? "up" : n < t.endMs ? "live" : "ended"; };
+const fmtDT = ms => new Date(ms).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+async function loadTests(cls) {
+  const snap = await getDocs(query(collection(db, "tests"), where("cls", "==", Number(cls))));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.startMs - b.startMs);
+}
+function seriesItem(t, done, isNew) {
+  const st = tStatus(t);
+  const chip = st === "live" ? `<span class="chip live">Live now</span>` : st === "up" ? `<span class="chip up">Upcoming</span>` : `<span class="chip end">Ended</span>`;
+  let action = "";
+  if (st === "live") action = done ? `<span class="hint">Submitted. Result after ${esc(fmtDT(t.endMs))}</span>` : `<button class="btn btn-gold" data-open>Start test</button>`;
+  else if (st === "up") action = `<span class="hint">Opens ${esc(fmtDT(t.startMs))}</span>`;
+  else action = done ? `<button class="btn btn-line" data-open>View result & rank</button>` : `<span class="hint">Not attempted</span>`;
+  const d = document.createElement("div"); d.className = "ch";
+  d.innerHTML = `<div class="ch-top"><div class="ch-t" style="flex:1"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${isNew ? `<span class="chip new">New</span>` : ""}${chip}<span class="hint">${esc(t.subject)}</span></div>
+    <h3 style="margin-top:4px">${esc(t.title)}</h3><span>${esc(fmtDT(t.startMs))} · ${t.durationMin} min · ${t.qids.length} questions</span></div></div>
+    <div class="ch-b">${action}</div>`;
+  const b = d.querySelector("[data-open]"); if (b) b.onclick = () => go("stest", { id: t.id });
+  return d;
+}
+async function fillSeries(box, all) {
+  box.innerHTML = `<div class="spin"></div>`;
+  let tests = [], mine = [];
+  try { [tests, mine] = await Promise.all([loadTests(S.profile.cls), loadMyResults(true)]); } catch (e) { box.innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+  const done = new Set(mine.filter(r => r.testId).map(r => r.testId));
+  const order = { live: 0, up: 1, ended: 2 };
+  let list = tests.slice().sort((a, b) => order[tStatus(a)] - order[tStatus(b)] || (tStatus(a) === "ended" ? b.startMs - a.startMs : a.startMs - b.startMs));
+  if (!all) list = list.filter(t => tStatus(t) !== "ended" || Date.now() - t.endMs < 7 * 864e5).slice(0, 3);
+  box.innerHTML = "";
+  if (!list.length) { box.innerHTML = `<div class="empty"><h3>No scheduled tests</h3><p>Upcoming tests from JRP Education will appear here.</p></div>`; return; }
+  const seen = getSeen("tests"), made = t => t.createdAtMs || t.startMs;
+  list.forEach(t => box.appendChild(seriesItem(t, done.has(t.id), !all && seen > 0 && made(t) > seen && tStatus(t) !== "ended")));
+  if (!all) {
+    const live = tests.filter(t => tStatus(t) === "live" && !done.has(t.id));
+    ALERTS.live = live.length;
+    ALERTS.tests = seen ? tests.filter(t => made(t) > seen && tStatus(t) === "up").length : 0;
+    const top = document.getElementById("liveAlert");
+    if (top && live.length) {
+      const t = live[0];
+      top.innerHTML = `<div class="ic">!</div><div style="flex:1;min-width:0"><h3></h3><p>Live now · closes ${esc(fmtDT(t.endMs))}</p></div>`;
+      top.querySelector("h3").textContent = live.length > 1 ? `${live.length} tests are live` : t.title;
+      top.hidden = false; top.onclick = () => live.length > 1 ? go("series") : go("stest", { id: t.id });
+    } else if (top) top.hidden = true;
+    updateBadge();
+    setTimeout(() => markSeen("tests"), 4000);
+  }
+}
+VIEWS.series = () => {
+  $app.innerHTML = header("Test Series", `Class ${S.profile.cls}`, true) + `<main><div class="in"><div class="chs" id="sl"></div></div></main>`;
+  fillSeries(document.getElementById("sl"), true);
+};
+
+async function fetchQuestions(ids) {
+  const docs = await Promise.all(ids.map(id => getDoc(doc(db, "questions", id)).catch(() => null)));
+  return docs.map(d => d && d.exists() ? { id: d.id, ...d.data() } : { q: "(This question was removed by the teacher)", opts: ["–", "–", "–", "–"], ans: -1, chapter: "" });
+}
+VIEWS.stest = async ({ id }) => {
+  loading();
+  const uid = S.user.uid, rid = `${id}_${uid}`;
+  let t, res;
+  try {
+    const [td, rd] = await Promise.all([getDoc(doc(db, "tests", id)), getDoc(doc(db, "results", rid))]);
+    if (!td.exists()) { $app.innerHTML = header("Test", "", true) + `<main><div class="in"><div class="empty"><h3>Test not found</h3><p>This test may have been removed.</p></div></div></main>`; return; }
+    t = { id, ...td.data() }; res = rd.exists() ? rd.data() : null;
+  } catch (e) { $app.innerHTML = header("Test", "", true) + `<main><div class="in"><div class="err">${esc(errText(e))}</div></div></main>`; return; }
+  const st = tStatus(t);
+  const shell = inner => { $app.innerHTML = header(t.title, `${t.subject} · Class ${t.cls}`, true) + `<main><div class="in">${inner}</div></main>`; };
+  if (res && st !== "ended") { shell(`<div class="card"><h2 style="font-size:20px">Test submitted</h2><p>Your answers are saved. Your score, answer review and rank will be available after the test closes on <b>${esc(fmtDT(t.endMs))}</b>.</p></div>`); return; }
+  if (res && st === "ended") { return showSeriesResult(t, res); }
+  if (st === "up") { shell(`<div class="card"><h2 style="font-size:20px">Not open yet</h2><p>This test opens on <b>${esc(fmtDT(t.startMs))}</b>. Come back at that time.</p></div>`); return; }
+  if (st === "ended") { shell(`<div class="card"><h2 style="font-size:20px">Test closed</h2><p>This test closed on ${esc(fmtDT(t.endMs))}. You did not attempt it.</p></div>`); return; }
+  // live: check for an attempt already in progress
+  let att = null;
+  try { const a = await getDoc(doc(db, "attempts", rid)); if (a.exists()) att = a.data(); } catch (e) {}
+  const deadlineFor = startedAt => Math.min(startedAt + t.durationMin * 60000, t.endMs);
+  if (att && deadlineFor(att.startedAtMs) <= Date.now()) {
+    shell(`<div class="card"><h2 style="font-size:20px">Time is over</h2><p>You started this test earlier and the time has run out. Submitting what was saved on this phone.</p><button class="btn btn-navy" id="sub">Submit now</button></div>`);
+    document.getElementById("sub").onclick = async () => { const qs = await fetchQuestions(t.qids); let ans = []; try { ans = JSON.parse(localStorage.getItem("jrp-t-" + id)) || []; } catch (e) {} await submitSeries(t, qs, qs.map((_, i) => ans[i] ?? null), Math.floor((deadlineFor(att.startedAtMs) - att.startedAtMs) / 1000), true); };
+    return;
+  }
+  shell(`<div class="card">
+      <div class="qtag">${esc(t.subject)}</div>
+      <h1 style="font-size:24px">${esc(t.title)}</h1>
+      <div class="stats three"><div><b>${t.qids.length}</b><span>Questions</span></div><div><b>${t.durationMin}</b><span>Minutes</span></div><div><b>${t.qids.length * MARK_RIGHT}</b><span>Max marks</span></div></div>
+      <ul class="hint" style="margin:0;padding-left:20px;font-size:15px;display:flex;flex-direction:column;gap:4px">
+        <li>You can take this test only once.</li>
+        <li>The timer starts when you tap Start and keeps running even if you close the app.</li>
+        <li>+${MARK_RIGHT} for a correct answer, −${MARK_WRONG} for a wrong answer, 0 if skipped.</li>
+        <li>Results and rank are shown after the test closes on ${esc(fmtDT(t.endMs))}.</li>
+      </ul>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" id="go">${att ? "Resume test" : "Start test"}</button>
+    </div>`);
+  document.getElementById("go").onclick = async () => {
+    const btn = document.getElementById("go"); btn.disabled = true; btn.textContent = "Loading…";
+    try {
+      if (!att) { att = { uid, testId: id, startedAtMs: Date.now() }; await setDoc(doc(db, "attempts", rid), att); }
+      const qs = await fetchQuestions(t.qids);
+      runTest({ qs, startMs: att.startedAtMs, deadlineMs: deadlineFor(att.startedAtMs), storeKey: "jrp-t-" + id, tag: q => q.chapter || t.subject,
+        onFinish: ({ ans, timeSec, auto }) => submitSeries(t, qs, ans, timeSec, auto) });
+    } catch (e) { const er = document.getElementById("err"); er.textContent = errText(e); er.hidden = false; btn.disabled = false; btn.textContent = "Start test"; }
+  };
+};
+async function submitSeries(t, qs, ans, timeSec, auto) {
+  loading("Submitting your answers…");
+  const rec = { uid: S.user.uid, name: S.profile.name, username: S.profile.username, studentCls: Number(S.profile.cls),
+    cls: Number(t.cls), subject: t.subject, chapter: t.title, testKey: "T|" + t.id, testId: t.id, endMs: t.endMs,
+    ...scoreOf(qs, ans), answers: ans.map(a => a ?? -1), timeSec, atMs: Date.now(), at: serverTimestamp() };
+  try {
+    await setDoc(doc(db, "results", `${t.id}_${S.user.uid}`), rec); S.myResults = null;
+    $app.innerHTML = header(t.title, `${t.subject} · Class ${t.cls}`) + `<main><div class="in"><div class="card">
+      <h2 style="font-size:22px">Test submitted</h2>
+      ${auto ? `<p class="hint">Time was up, so the test was submitted automatically.</p>` : ""}
+      <p>Your answers are saved. Your score, answer review and rank will be available after <b>${esc(fmtDT(t.endMs))}</b>.</p>
+      <button class="btn btn-navy" id="ok">Done</button></div></div></main>`;
+    document.getElementById("ok").onclick = () => resetTo("home");
+  } catch (e) {
+    $app.innerHTML = header(t.title, "") + `<main><div class="in"><div class="card"><div class="err">${esc(errText(e))}</div><p>Check your internet connection and try again. Your answers are kept on this phone.</p><button class="btn btn-navy" id="retry">Try again</button></div></div></main>`;
+    document.getElementById("retry").onclick = () => submitSeries(t, qs, ans, timeSec, auto);
+  }
+}
+async function showSeriesResult(t, res) {
+  loading();
+  let qs = [], all = [];
+  try { [qs, all] = await Promise.all([fetchQuestions(t.qids), getDocs(query(collection(db, "results"), where("testId", "==", t.id))).then(s => s.docs.map(d => d.data()))]); } catch (e) {}
+  all.sort((a, b) => b.score - a.score || a.timeSec - b.timeSec);
+  const rank = all.findIndex(r => r.uid === S.user.uid) + 1;
+  const ans = (res.answers || []).map(a => a < 0 ? null : a);
+  showResult({ rec: res, qs, ans, saved: true, rankText: rank ? `Rank ${rank} of ${all.length}` : "" });
+}
+
+/* ----- notices ----- */
+async function loadNotices(cls) {
+  const q = cls ? query(collection(db, "notices"), where("cls", "in", [0, Number(cls)])) : collection(db, "notices");
+  return (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.atMs - a.atMs);
+}
+function noticeCard(n, extra, isNew) {
+  const d = document.createElement("div"); d.className = "notice" + (n.pinned ? " pin" : "");
+  d.innerHTML = `<div class="rv-h"><span>${isNew ? `<span class="chip new">New</span> ` : ""}${n.pinned ? "<b>Pinned</b> · " : ""}${n.cls ? "Class " + n.cls : "All classes"} · ${esc(fmtDate(n.atMs))}</span></div><h3></h3><p class="nb"></p>`;
+  d.querySelector("h3").textContent = n.title; d.querySelector(".nb").textContent = n.body;
+  if (extra) d.appendChild(extra);
+  return d;
+}
+async function fillNotices(box, all) {
+  let ns = [];
+  try { ns = await loadNotices(S.profile.cls); } catch (e) { return; }
+  if (!all) ns = ns.filter(n => n.pinned || Date.now() - n.atMs < 14 * 864e5).slice(0, 2);
+  box.innerHTML = "";
+  if (!ns.length) { ALERTS.notices = 0; updateBadge(); if (all) box.innerHTML = `<div class="empty"><h3>No notices</h3><p>Announcements from JRP Education will appear here.</p></div>`; box.hidden = !all; return; }
+  box.hidden = false;
+  if (!all) { const h = document.createElement("div"); h.className = "sec-h"; h.innerHTML = `<h2>Notices</h2><button class="link">View all</button>`; h.querySelector("button").onclick = () => go("notices"); box.appendChild(h); }
+  const seen = getSeen("notices");
+  const isNew = n => seen > 0 ? n.atMs > seen : Date.now() - n.atMs < 2 * 864e5;
+  ns.forEach(n => box.appendChild(noticeCard(n, null, isNew(n))));
+  ALERTS.notices = ns.filter(isNew).length; updateBadge();
+  if (all) markSeen("notices"); else setTimeout(() => markSeen("notices"), 4000);
+}
+VIEWS.notices = () => {
+  $app.innerHTML = header("Notices", "JRP Education", true) + `<main><div class="in"><div class="list" id="nl"></div></div></main>`;
+  fillNotices(document.getElementById("nl"), true);
+};
+
+/* ----- student: results, rank, profile ----- */
+VIEWS.results = async () => {
+  $app.innerHTML = header("My results", S.profile.name) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  let rs = [];
+  try { rs = await loadMyResults(true); } catch (e) { document.getElementById("in").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+  const pending = r => r.endMs && r.endMs > Date.now();
+  const box = document.getElementById("in");
+  if (!rs.length) { box.innerHTML = `<div class="empty"><h3>No tests taken yet</h3><p>Your scores will appear here after each test.</p></div>`; return; }
+  const fin = rs.filter(r => !pending(r));
+  const avg = fin.length ? Math.round(fin.reduce((s, r) => s + Math.max(0, r.score) / r.max, 0) / fin.length * 100) : 0;
+  const bestPct = fin.length ? Math.max(...fin.map(r => Math.round(Math.max(0, r.score) / r.max * 100))) : 0;
+  box.innerHTML = `<div class="stats three"><div><b>${rs.length}</b><span>Tests taken</span></div><div><b>${avg}%</b><span>Average</span></div><div><b>${bestPct}%</b><span>Best</span></div></div><div class="list" id="l"></div>`;
+  const l = document.getElementById("l");
+  rs.forEach(r => {
+    const d = document.createElement("div"); d.className = "item";
+    d.innerHTML = `<div class="av">${esc((GLYPH[r.subject] || r.subject[0]))}</div><div class="mid"><b>${esc(r.chapter)}</b><span>${r.testId ? "Test Series · " : ""}${esc(r.subject)} · Class ${r.cls} · ${fmtDate(r.atMs)}</span></div><div class="end">${pending(r) ? `<small>Result after<br>${esc(fmtDT(r.endMs))}</small>` : `${r.score}<small>/${r.max}</small>`}</div>`;
+    if (r.testId && !pending(r)) { d.style.cursor = "pointer"; d.onclick = () => go("stest", { id: r.testId }); }
+    l.appendChild(d);
+  });
+};
+
+function rankRows(rs, mode) {
+  // mode "all": average % per student across tests; otherwise best score per student in that test
+  const by = {};
+  rs.forEach(r => {
+    const u = by[r.uid] || (by[r.uid] = { uid: r.uid, name: r.name, n: 0, sum: 0, best: null });
+    u.n++; u.sum += Math.max(0, r.score) / r.max;
+    if (!u.best || r.score > u.best.score) u.best = r;
+  });
+  const rows = Object.values(by);
+  if (mode === "all") rows.forEach(u => u.val = Math.round(u.sum / u.n * 100)), rows.sort((a, b) => b.val - a.val || b.n - a.n);
+  else rows.sort((a, b) => b.best.score - a.best.score || a.best.timeSec - b.best.timeSec);
+  return rows;
+}
+function drawBoard(el, rs, key, meUid) {
+  el.innerHTML = "";
+  const sel = key === "all" ? rs : rs.filter(r => r.testKey === key);
+  const rows = rankRows(sel, key);
+  if (!rows.length) { el.innerHTML = `<div class="empty"><h3>No results yet</h3><p>Rankings appear once students take tests.</p></div>`; return; }
+  rows.slice(0, 50).forEach((u, i) => {
+    const d = document.createElement("div"); d.className = "item" + (u.uid === meUid ? " me" : "");
+    d.innerHTML = `<div class="av ${i === 0 ? "r1" : ""}">${i + 1}</div><div class="mid"><b></b><span></span></div><div class="end"></div>`;
+    d.querySelector(".mid b").textContent = u.name + (u.uid === meUid ? " (you)" : "");
+    d.querySelector(".mid span").textContent = key === "all" ? `${u.n} test${u.n > 1 ? "s" : ""} taken` : `Time ${fmtTime(u.best.timeSec)}`;
+    d.querySelector(".end").innerHTML = key === "all" ? `${u.val}%` : `${u.best.score}<small>/${u.best.max}</small>`;
+    el.appendChild(d);
+  });
+}
+VIEWS.board = async () => {
+  const c = Number(S.profile.cls);
+  $app.innerHTML = header("Leaderboard", `Class ${c}`) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  let rs = [];
+  try { rs = (await getDocs(query(collection(db, "results"), where("studentCls", "==", c)))).docs.map(d => d.data()).filter(r => !r.endMs || r.endMs <= Date.now()); }
+  catch (e) { document.getElementById("in").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+  const tests = [...new Set(rs.map(r => r.testKey))];
+  const box = document.getElementById("in");
+  box.innerHTML = `<div class="field"><label for="tsel">Ranking</label><select id="tsel"><option value="all">All tests (average %)</option>${tests.map(t => { const r = rs.find(x => x.testKey === t); return `<option value="${esc(t)}">${esc(r.chapter)} · ${esc(r.subject)}${Number(r.cls) !== c ? " · Class " + r.cls : ""}</option>`; }).join("")}</select></div><div class="list" id="l"></div>`;
+  const l = document.getElementById("l"), tsel = document.getElementById("tsel");
+  tsel.onchange = () => drawBoard(l, rs, tsel.value, S.user.uid);
+  drawBoard(l, rs, "all", S.user.uid);
+};
+
+VIEWS.profile = () => {
+  const p = S.profile;
+  const rows = [["Name", p.name], ["Username", p.username], ["Class", p.cls + "th"], ["Mobile", p.mobile], ["Father's name", p.father], ["School", p.school]].filter(r => r[1]);
+  $app.innerHTML = header("Profile", "JRP Education") + `
+  <main><div class="in">
+    <div class="card"><div style="display:flex;gap:12px;align-items:center"><div class="av" style="width:52px;height:52px;font-size:18px">${esc(initials(p.name))}</div><div><h2 style="font-size:20px">${esc(p.name)}</h2><p class="hint">Student · Class ${esc(p.cls)}</p></div></div>
+      <div>${rows.map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("")}</div>
+    </div>
+    <p class="hint">To change your details or password, contact JRP Education.</p>
+    <button class="btn btn-line" id="out">Log out</button>
+  </div></main>`;
+  document.getElementById("out").onclick = () => signOut(auth);
+};
+
+/* ---------- teacher panel ---------- */
+let TTAB = "ts";
+VIEWS.teacher = async () => {
+  $app.innerHTML = `<div class="top"><div class="in"><div class="top-mark"><img src="${LOGO}" alt=""></div><div class="tt"><h2>Teacher Panel</h2><small>JRP Education · Admin</small></div><button class="back" id="out">Log out</button></div></div>
+  <main><div class="in">
+    <div class="stats three" id="st"><div><b>–</b><span>Students</span></div><div><b>–</b><span>Tests taken</span></div><div><b>–</b><span>Questions</span></div></div>
+    <div class="tabs" role="tablist">
+      <button class="tb" data-t="ts">Test Series</button><button class="tb" data-t="nb">Notices</button><button class="tb" data-t="st">Students</button><button class="tb" data-t="rs">Results</button><button class="tb" data-t="qs">Questions</button><button class="tb" data-t="sy">Syllabus & Notes</button>
+    </div>
+    <div id="pane"></div>
+  </div></main>`;
+  document.getElementById("out").onclick = () => signOut(auth);
+  $app.querySelectorAll(".tb").forEach(b => b.onclick = () => { TTAB = b.dataset.t; showTab(); });
+  showTab();
+  try {
+    const [u, r, q] = await Promise.all([getDocs(collection(db, "users")), getDocs(query(collection(db, "results"), limit(1000))), getDocs(collection(db, "questions"))]);
+    const st = document.getElementById("st");
+    if (st) st.innerHTML = `<div><b>${u.size}</b><span>Students</span></div><div><b>${r.size}${r.size >= 1000 ? "+" : ""}</b><span>Tests taken</span></div><div><b>${q.size}</b><span>Questions</span></div>`;
+  } catch (e) {}
+};
+function showTab() {
+  $app.querySelectorAll(".tb").forEach(b => b.setAttribute("aria-selected", b.dataset.t === TTAB));
+  const pane = document.getElementById("pane");
+  pane.innerHTML = `<div class="loading" style="min-height:30vh"><div class="spin"></div></div>`;
+  ({ nb: tabNotices, ts: tabSeries, st: tabStudents, rs: tabResults, qs: tabQuestions, sy: tabSyllabus })[TTAB](pane);
+}
+const classOptions = (sel, any) => (any ? `<option value="">All classes</option>` : "") + CLASSES.map(c => `<option value="${c}" ${Number(sel) === c ? "selected" : ""}>Class ${c}</option>`).join("");
+const subjectOptions = (c, sel) => subjectsFor(Number(c)).map(s => `<option ${s === sel ? "selected" : ""}>${esc(s)}</option>`).join("");
+const genPass = () => String(Math.floor(100000 + Math.random() * 900000));
+const slug = s => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+async function tabStudents(pane) {
+  pane.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px">
+    <button class="btn btn-gold" id="add">+ Add student</button>
+    <form class="card" id="f" hidden novalidate>
+      <h3 style="font-size:18px">New student</h3>
+      <div class="field"><label for="sn">Full name</label><input id="sn" type="text" placeholder="Student name"></div>
+      <div class="two"><div class="field"><label for="sc">Class</label><select id="sc">${classOptions(10)}</select></div>
+      <div class="field"><label for="sm">Mobile</label><input id="sm" type="tel" inputmode="numeric" placeholder="10-digit number"></div></div>
+      <div class="field"><label for="sf">Father's name</label><input id="sf" type="text"></div>
+      <div class="field"><label for="ss">School (optional)</label><input id="ss" type="text"></div>
+      <div class="two"><div class="field"><label for="su">Username</label><input id="su" type="text" autocapitalize="none" placeholder="Auto"></div>
+      <div class="field"><label for="sp">Password</label><input id="sp" type="text" placeholder="Auto"></div></div>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" type="submit" id="save">Save student</button>
+    </form>
+    <div class="ok-msg" id="done" hidden></div>
+    <div class="filters"><div class="field"><label for="fc">Class</label><select id="fc">${classOptions("", true)}</select></div><div class="field"><label for="fq">Search</label><input id="fq" type="search" placeholder="Name or username"></div></div>
+    <div class="list" id="l"></div></div>`;
+  const $ = id => document.getElementById(id);
+  $("add").onclick = () => { $("f").hidden = !$("f").hidden; };
+  const autoU = () => { if (!$("su").dataset.touched) $("su").value = slug(($("sn").value.split(" ")[0] || "")) + $("sc").value; };
+  $("sn").oninput = autoU; $("sc").onchange = autoU; $("su").oninput = () => $("su").dataset.touched = "1";
+  $("sp").value = genPass();
+  $("f").onsubmit = async e => {
+    e.preventDefault(); $("err").hidden = true;
+    const name = $("sn").value.trim(), cls = Number($("sc").value), username = slug($("su").value || ""), password = $("sp").value.trim() || genPass();
+    if (!name) { $("err").textContent = "Enter the student's name."; $("err").hidden = false; return; }
+    if (username.length < 3) { $("err").textContent = "Username needs at least 3 letters or numbers."; $("err").hidden = false; return; }
+    if (password.length < 6) { $("err").textContent = "Password must be at least 6 characters."; $("err").hidden = false; return; }
+    $("save").disabled = true; $("save").textContent = "Saving…";
+    try {
+      const c = await createUserWithEmailAndPassword(auth2, usernameToEmail(username), password);
+      const uid = c.user.uid; await signOut(auth2);
+      const b = writeBatch(db);
+      b.set(doc(db, "users", uid), { name, cls, username, mobile: $("sm").value.trim(), father: $("sf").value.trim(), school: $("ss").value.trim(), role: "student", active: true, createdAt: serverTimestamp() });
+      b.set(doc(db, "secrets", uid), { username, password });
+      await b.commit();
+      $("done").innerHTML = `Student added. Share these login details:<br><b>Username:</b> ${esc(username)}<br><b>Password:</b> ${esc(password)}`;
+      $("done").hidden = false; $("f").reset(); $("f").hidden = true; $("su").dataset.touched = ""; $("sp").value = genPass();
+      loadList();
+    } catch (x) { $("err").textContent = errText(x); $("err").hidden = false; }
+    $("save").disabled = false; $("save").textContent = "Save student";
+  };
+  let all = [];
+  async function loadList() {
+    try { all = (await getDocs(collection(db, "users"))).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name)); }
+    catch (e) { $("l").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+    draw();
+  }
+  function draw() {
+    const fc = $("fc").value, fq = $("fq").value.trim().toLowerCase();
+    const rows = all.filter(s => (!fc || Number(s.cls) === Number(fc)) && (!fq || s.name.toLowerCase().includes(fq) || s.username.includes(fq)));
+    const l = $("l"); l.innerHTML = "";
+    if (!rows.length) { l.innerHTML = `<div class="empty"><h3>${all.length ? "No matching students" : "No students yet"}</h3><p>${all.length ? "Try another class or search." : "Tap Add student to create the first login."}</p></div>`; return; }
+    rows.forEach(s => {
+      const b = document.createElement("button"); b.className = "item";
+      b.innerHTML = `<div class="av">${esc(initials(s.name))}</div><div class="mid"><b></b><span></span></div><div class="end"><small>${s.active === false ? "Inactive" : ""}</small></div>`;
+      b.querySelector(".mid b").textContent = s.name; b.querySelector(".mid span").textContent = `Class ${s.cls} · ${s.username}`;
+      const d = document.createElement("div"); d.className = "detail"; d.hidden = true;
+      b.onclick = async () => { d.hidden = !d.hidden; if (!d.hidden && !d.dataset.ok) await studentDetail(d, s, loadList); };
+      l.appendChild(b); l.appendChild(d);
+    });
+  }
+  $("fc").onchange = draw; $("fq").oninput = draw;
+  loadList();
+}
+async function studentDetail(d, s, reload) {
+  d.innerHTML = `<div class="spin"></div>`;
+  let sec = {}, rs = [];
+  try { const x = await getDoc(doc(db, "secrets", s.id)); if (x.exists()) sec = x.data(); } catch (e) {}
+  try { rs = (await getDocs(query(collection(db, "results"), where("uid", "==", s.id)))).docs.map(x => x.data()); } catch (e) {}
+  const avg = rs.length ? Math.round(rs.reduce((a, r) => a + Math.max(0, r.score) / r.max, 0) / rs.length * 100) + "%" : "–";
+  d.dataset.ok = "1";
+  d.innerHTML = [["Username", s.username], ["Password", sec.password || "–"], ["Mobile", s.mobile || "–"], ["Father's name", s.father || "–"], ["School", s.school || "–"], ["Tests taken", rs.length], ["Average", avg]]
+    .map(([k, v]) => `<div class="kv"><span>${k}</span><b>${esc(v)}</b></div>`).join("") +
+    `<div class="row"><button class="btn btn-line" data-a="pw">Reset password</button><button class="btn ${s.active === false ? "btn-line" : "btn-danger"}" data-a="ac">${s.active === false ? "Activate" : "Deactivate"}</button></div><div class="hint" data-msg></div>`;
+  const msg = d.querySelector("[data-msg]");
+  d.querySelector('[data-a="pw"]').onclick = async () => {
+    if (!sec.password) { msg.textContent = "Old password not on record, so it cannot be reset here."; return; }
+    const np = genPass(); msg.textContent = "Resetting…";
+    try {
+      const c = await signInWithEmailAndPassword(auth2, usernameToEmail(s.username), sec.password);
+      await updatePassword(c.user, np); await signOut(auth2);
+      await setDoc(doc(db, "secrets", s.id), { username: s.username, password: np });
+      sec.password = np; d.querySelectorAll(".kv b")[1].textContent = np; msg.textContent = `New password: ${np}`;
+    } catch (x) { msg.textContent = errText(x); }
+  };
+  d.querySelector('[data-a="ac"]').onclick = async () => {
+    try { await updateDoc(doc(db, "users", s.id), { active: s.active === false }); toast(s.active === false ? "Student activated" : "Student deactivated"); reload(); }
+    catch (x) { msg.textContent = errText(x); }
+  };
+}
+
+async function tabResults(pane) {
+  pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
+    <div class="filters"><div class="field"><label for="rc">Class</label><select id="rc">${classOptions("", true)}</select></div><div class="field"><label for="rq">Search</label><input id="rq" type="search" placeholder="Student or chapter"></div></div>
+    <div class="list" id="l"></div></div>`;
+  let all = [];
+  try { all = (await getDocs(query(collection(db, "results"), orderBy("atMs", "desc"), limit(500)))).docs.map(d => d.data()); }
+  catch (e) { document.getElementById("l").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
+  const draw = () => {
+    const c = document.getElementById("rc").value, q = document.getElementById("rq").value.trim().toLowerCase();
+    const rows = all.filter(r => (!c || r.studentCls === Number(c)) && (!q || r.name.toLowerCase().includes(q) || r.chapter.toLowerCase().includes(q)));
+    const l = document.getElementById("l"); l.innerHTML = "";
+    if (!rows.length) { l.innerHTML = `<div class="empty"><h3>No results yet</h3><p>Results appear here as soon as students submit tests.</p></div>`; return; }
+    rows.forEach(r => {
+      const d = document.createElement("div"); d.className = "item";
+      d.innerHTML = `<div class="av">${esc(initials(r.name))}</div><div class="mid"><b></b><span></span></div><div class="end">${r.score}<small>/${r.max}</small></div>`;
+      d.querySelector(".mid b").textContent = r.name;
+      d.querySelector(".mid span").textContent = `${r.chapter} · ${r.subject} ${r.cls} · ${fmtDate(r.atMs)} · ✓${r.correct} ✗${r.wrong}`;
+      l.appendChild(d);
+    });
+  };
+  document.getElementById("rc").onchange = draw; document.getElementById("rq").oninput = draw; draw();
+}
+
+/* questions: bulk text format
+Q: question text
+A) option
+B) option
+C) option
+D) option
+Ans: B
+Sol: solution (optional)
+(blank line between questions) */
+function parseBulk(txt) {
+  const out = [], errs = [];
+  txt.replace(/\r/g, "").split(/\n\s*\n/).map(b => b.trim()).filter(Boolean).forEach((blk, n) => {
+    const q = { q: "", opts: ["", "", "", ""], ans: -1, sol: "" };
+    let last = null;
+    blk.split("\n").forEach(line => {
+      let m;
+      if ((m = line.match(/^\s*(?:Q\d*|\d+)\s*[:.)]\s*(.*)$/i))) { q.q = m[1]; last = "q"; }
+      else if ((m = line.match(/^\s*\(?([A-Da-d])[).:]\s*(.*)$/))) { const i = "abcd".indexOf(m[1].toLowerCase()); q.opts[i] = m[2]; last = i; }
+      else if ((m = line.match(/^\s*(?:Ans(?:wer)?)\s*[:.-]\s*\(?([A-Da-d])/i))) { q.ans = "abcd".indexOf(m[1].toLowerCase()); last = null; }
+      else if ((m = line.match(/^\s*(?:Sol(?:ution)?|Exp(?:lanation)?)\s*[:.-]\s*(.*)$/i))) { q.sol = m[1]; last = "sol"; }
+      else if (last === "q") q.q += "\n" + line.trim();
+      else if (last === "sol") q.sol += "\n" + line.trim();
+      else if (typeof last === "number") q.opts[last] += " " + line.trim();
+      else if (!q.q) { q.q = line.trim(); last = "q"; }
+    });
+    if (!q.q || q.opts.some(o => !o.trim()) || q.ans < 0) errs.push(n + 1); else out.push(q);
+  });
+  return { out, errs };
+}
+async function tabQuestions(pane) {
+  pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
+    <div class="filters"><div class="field"><label for="qc">Class</label><select id="qc">${classOptions(10)}</select></div><div class="field"><label for="qsj">Subject</label><select id="qsj"></select></div></div>
+    <div class="field"><label for="qch">Chapter</label><select id="qch"></select></div>
+    <div class="row"><button class="btn btn-gold" id="one">+ Add question</button><button class="btn btn-line" id="bulk">Paste many</button></div>
+    <form class="card" id="f1" hidden novalidate>
+      <div class="field"><label for="qq">Question</label><textarea id="qq"></textarea></div>
+      ${[0, 1, 2, 3].map(i => `<div class="field"><label for="o${i}">Option ${L[i]}</label><input id="o${i}" type="text"></div>`).join("")}
+      <div class="field"><label for="qa">Correct answer</label><select id="qa">${[0, 1, 2, 3].map(i => `<option value="${i}">${L[i]}</option>`).join("")}</select></div>
+      <div class="field"><label for="qsol">Solution (optional)</label><textarea id="qsol"></textarea></div>
+      <div class="err" id="e1" hidden></div>
+      <button class="btn btn-navy" type="submit">Save question</button>
+    </form>
+    <form class="card" id="f2" hidden novalidate>
+      <p class="hint">Paste questions in this format, with a blank line between questions:</p>
+      <pre class="rv-ex" style="margin:0;overflow-x:auto">Q: What is 2 + 3?
+A) 4
+B) 5
+C) 6
+D) 7
+Ans: B
+Sol: 2 + 3 = 5</pre>
+      <div class="field"><label for="bt">Questions</label><textarea id="bt" style="min-height:200px"></textarea></div>
+      <div class="err" id="e2" hidden></div>
+      <button class="btn btn-navy" type="submit">Check and save</button>
+    </form>
+    <div class="sec-h"><h2 style="font-size:17px">Questions in this chapter</h2><span id="qn"></span></div>
+    <div class="list" id="l"></div></div>`;
+  const $ = id => document.getElementById(id);
+  const fillSubj = () => { $("qsj").innerHTML = subjectOptions($("qc").value, $("qsj").value); };
+  const fillCh = async () => {
+    const chs = await getSyllabus(Number($("qc").value), $("qsj").value);
+    $("qch").innerHTML = chs.length ? chs.map(c => `<option>${esc(c)}</option>`).join("") : `<option value="">Add chapters in Syllabus & Notes first</option>`;
+    loadQ();
+  };
+  fillSubj(); await fillCh();
+  $("qc").onchange = async () => { fillSubj(); await fillCh(); };
+  $("qsj").onchange = fillCh; $("qch").onchange = loadQ;
+  $("one").onclick = () => { $("f1").hidden = !$("f1").hidden; $("f2").hidden = true; };
+  $("bulk").onclick = () => { $("f2").hidden = !$("f2").hidden; $("f1").hidden = true; };
+  const base = () => ({ cls: Number($("qc").value), subject: $("qsj").value, chapter: $("qch").value });
+  $("f1").onsubmit = async e => {
+    e.preventDefault(); $("e1").hidden = true;
+    if (!$("qch").value) { $("e1").textContent = "Select a chapter first."; $("e1").hidden = false; return; }
+    const q = { q: $("qq").value.trim(), opts: [0, 1, 2, 3].map(i => $("o" + i).value.trim()), ans: Number($("qa").value), sol: $("qsol").value.trim() };
+    if (!q.q || q.opts.some(o => !o)) { $("e1").textContent = "Fill in the question and all four options."; $("e1").hidden = false; return; }
+    try { await addDoc(collection(db, "questions"), { ...base(), ...q, createdAt: serverTimestamp() }); $("f1").reset(); toast("Question saved"); loadQ(); }
+    catch (x) { $("e1").textContent = errText(x); $("e1").hidden = false; }
+  };
+  $("f2").onsubmit = async e => {
+    e.preventDefault(); $("e2").hidden = true;
+    if (!$("qch").value) { $("e2").textContent = "Select a chapter first."; $("e2").hidden = false; return; }
+    const { out, errs } = parseBulk($("bt").value);
+    if (errs.length) { $("e2").textContent = `Check question number ${errs.join(", ")}: each needs Q, options A–D and Ans.`; $("e2").hidden = false; return; }
+    if (!out.length) { $("e2").textContent = "Paste at least one question."; $("e2").hidden = false; return; }
+    try {
+      for (let i = 0; i < out.length; i += 400) { const b = writeBatch(db); out.slice(i, i + 400).forEach(q => b.set(doc(collection(db, "questions")), { ...base(), ...q, createdAt: serverTimestamp() })); await b.commit(); }
+      $("bt").value = ""; toast(`${out.length} questions saved`); loadQ();
+    } catch (x) { $("e2").textContent = errText(x); $("e2").hidden = false; }
+  };
+  async function loadQ() {
+    const l = $("l"); if (!l) return;
+    if (!$("qch").value) { l.innerHTML = ""; $("qn").textContent = ""; return; }
+    l.innerHTML = `<div class="spin"></div>`;
+    let qs = [];
+    try { qs = (await getDocs(query(collection(db, "questions"), where("cls", "==", Number($("qc").value)), where("subject", "==", $("qsj").value), where("chapter", "==", $("qch").value)))).docs.map(d => ({ id: d.id, ...d.data() })); }
+    catch (x) { l.innerHTML = `<div class="err">${esc(errText(x))}</div>`; return; }
+    $("qn").textContent = qs.length + (qs.length < CHAPTER_Q ? ` (add ${CHAPTER_Q - qs.length}+ more)` : "");
+    l.innerHTML = "";
+    if (!qs.length) { l.innerHTML = `<div class="empty"><h3>No questions yet</h3><p>Add at least ${CHAPTER_Q} questions so students get a full test.</p></div>`; return; }
+    qs.forEach((q, i) => {
+      const d = document.createElement("div"); d.className = "rv";
+      d.innerHTML = `<div class="rv-h"><b>Q${i + 1}</b><button class="btn btn-danger" style="padding:4px 10px;font-size:13px">Delete</button></div><p class="rv-q"></p><p class="rv-a"></p>`;
+      d.querySelector(".rv-q").textContent = q.q;
+      d.querySelector(".rv-a").innerHTML = q.opts.map((o, j) => `<span class="${j === q.ans ? "c" : ""}">${L[j]}) ${esc(o)}</span>`).join("<br>");
+      const del = d.querySelector("button");
+      del.onclick = async () => {
+        if (del.dataset.c !== "1") { del.dataset.c = "1"; del.textContent = "Tap again to delete"; return; }
+        try { await deleteDoc(doc(db, "questions", q.id)); toast("Question deleted"); loadQ(); } catch (x) { toast(errText(x)); }
+      };
+      l.appendChild(d);
+    });
+  }
+}
+
+async function tabSyllabus(pane) {
+  pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
+    <div class="filters"><div class="field"><label for="yc">Class</label><select id="yc">${classOptions(10)}</select></div><div class="field"><label for="ys">Subject</label><select id="ys"></select></div></div>
+    <form class="card" id="f1" novalidate>
+      <h3 style="font-size:18px">Chapters</h3>
+      <p class="hint">One chapter per line, in order. A subject shows as "Coming soon" until it has chapters.</p>
+      <div class="field"><label for="yl">Chapter list</label><textarea id="yl" style="min-height:220px"></textarea></div>
+      <button class="btn btn-navy" type="submit">Save chapters</button>
+    </form>
+    <form class="card" id="f2" novalidate>
+      <h3 style="font-size:18px">Notes</h3>
+      <div class="field"><label for="nc">Chapter</label><select id="nc"></select></div>
+      <div class="field"><label for="nt">Notes and formulas</label><textarea id="nt" style="min-height:220px" placeholder="Key points, formulas and examples for this chapter"></textarea></div>
+      <button class="btn btn-navy" type="submit">Save notes</button>
+    </form></div>`;
+  const $ = id => document.getElementById(id);
+  const fillSubj = () => { $("ys").innerHTML = subjectOptions($("yc").value, $("ys").value); };
+  const load = async () => {
+    const c = Number($("yc").value), s = $("ys").value;
+    delete S.syllabus[sylKey(c, s)];
+    const chs = await getSyllabus(c, s);
+    $("yl").value = chs.join("\n");
+    $("nc").innerHTML = chs.map(x => `<option>${esc(x)}</option>`).join("");
+    loadNote();
+  };
+  const loadNote = async () => {
+    $("nt").value = "";
+    if (!$("nc").value) return;
+    try { const d = await getDoc(doc(db, "notes", `${$("yc").value}_${$("ys").value}_${$("nc").value}`)); $("nt").value = d.exists() ? d.data().text || "" : ""; } catch (e) {}
+  };
+  fillSubj(); await load();
+  $("yc").onchange = async () => { fillSubj(); await load(); };
+  $("ys").onchange = load; $("nc").onchange = loadNote;
+  $("f1").onsubmit = async e => {
+    e.preventDefault();
+    const chapters = $("yl").value.split("\n").map(x => x.trim()).filter(Boolean);
+    try { await setDoc(doc(db, "syllabus", `${$("yc").value}_${$("ys").value}`), { chapters }); toast("Chapters saved"); await load(); } catch (x) { toast(errText(x)); }
+  };
+  $("f2").onsubmit = async e => {
+    e.preventDefault();
+    if (!$("nc").value) { toast("Add chapters first"); return; }
+    try { await setDoc(doc(db, "notes", `${$("yc").value}_${$("ys").value}_${$("nc").value}`), { text: $("nt").value }); toast("Notes saved"); } catch (x) { toast(errText(x)); }
+  };
+}
+
+/* ----- teacher: test series ----- */
+const toLocalInput = ms => { const d = new Date(ms - new Date(ms).getTimezoneOffset() * 60000); return d.toISOString().slice(0, 16); };
+async function tabSeries(pane) {
+  const tomorrow10 = (() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10, 0, 0, 0); return d.getTime(); })();
+  pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
+    <button class="btn btn-gold" id="new">+ Schedule a test</button>
+    <form class="card" id="f" hidden novalidate>
+      <h3 style="font-size:18px">New scheduled test</h3>
+      <div class="field"><label for="tt">Test name</label><input id="tt" type="text" placeholder="e.g. Weekly Test 1"></div>
+      <div class="two"><div class="field"><label for="tc">Class</label><select id="tc">${classOptions(10)}</select></div><div class="field"><label for="tsb">Subject</label><select id="tsb"></select></div></div>
+      <div class="field"><label>Chapters</label><div id="tch" class="chk"></div></div>
+      <div class="two"><div class="field"><label for="tn">Questions</label><input id="tn" type="number" min="1" max="100" value="25"></div><div class="field"><label for="td">Duration (minutes)</label><input id="td" type="number" min="5" max="300" value="45"></div></div>
+      <div class="field"><label for="ts1">Opens at</label><input id="ts1" type="datetime-local" value="${toLocalInput(tomorrow10)}"></div>
+      <div class="field"><label for="ts2">Closes at</label><input id="ts2" type="datetime-local" value="${toLocalInput(tomorrow10 + 2 * 3600e3)}"></div>
+      <p class="hint">Students can start any time between these two times. Each student gets the full duration, but the test always ends at the closing time. Results and rank are shown after closing.</p>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" type="submit" id="save">Schedule test</button>
+    </form>
+    <div class="sec-h"><h2 style="font-size:17px">Scheduled tests</h2><span id="cnt"></span></div>
+    <div class="list" id="l"></div></div>`;
+  const $ = id => document.getElementById(id);
+  const fillSubj = () => { $("tsb").innerHTML = subjectOptions($("tc").value, $("tsb").value); };
+  const fillCh = async () => {
+    const chs = await getSyllabus(Number($("tc").value), $("tsb").value);
+    $("tch").innerHTML = chs.length ? `<label class="chk-row"><input type="checkbox" id="chAll" checked> <b>All chapters</b></label>` + chs.map((c, i) => `<label class="chk-row"><input type="checkbox" class="chx" value="${esc(c)}" checked> ${esc(c)}</label>`).join("") : `<p class="hint">No chapters yet. Add them in Syllabus & Notes.</p>`;
+    const all = $("chAll"); if (all) all.onchange = () => $app.querySelectorAll(".chx").forEach(x => x.checked = all.checked);
+  };
+  fillSubj(); fillCh();
+  $("tc").onchange = () => { fillSubj(); fillCh(); }; $("tsb").onchange = fillCh;
+  $("new").onclick = () => $("f").hidden = !$("f").hidden;
+  $("f").onsubmit = async e => {
+    e.preventDefault(); const err = $("err"); err.hidden = true;
+    const fail = m => { err.textContent = m; err.hidden = false; };
+    const title = $("tt").value.trim(), cls = Number($("tc").value), subject = $("tsb").value;
+    const chapters = [...$app.querySelectorAll(".chx:checked")].map(x => x.value);
+    const n = Number($("tn").value), dur = Number($("td").value);
+    const startMs = new Date($("ts1").value).getTime(), endMs = new Date($("ts2").value).getTime();
+    if (!title) return fail("Enter a test name.");
+    if (!chapters.length) return fail("Select at least one chapter.");
+    if (!(n > 0)) return fail("Enter the number of questions.");
+    if (!(dur >= 5)) return fail("Duration must be at least 5 minutes.");
+    if (!startMs || !endMs) return fail("Set the opening and closing time.");
+    if (endMs - startMs < dur * 60000) return fail("Closing time must be at least the test duration after the opening time.");
+    $("save").disabled = true; $("save").textContent = "Picking questions…";
+    try {
+      const pool = (await getDocs(query(collection(db, "questions"), where("cls", "==", cls), where("subject", "==", subject)))).docs
+        .map(d => ({ id: d.id, ch: d.data().chapter })).filter(q => chapters.includes(q.ch));
+      if (pool.length < n) { fail(`Only ${pool.length} questions are available in the selected chapters. Add more questions or lower the number.`); }
+      else {
+        // spread questions across chapters in syllabus order
+        const picked = shuffle(pool).slice(0, n).sort((a, b) => chapters.indexOf(a.ch) - chapters.indexOf(b.ch));
+        await addDoc(collection(db, "tests"), { title, cls, subject, chapters, qids: picked.map(q => q.id), durationMin: dur, startMs, endMs, createdAtMs: Date.now(), createdAt: serverTimestamp() });
+        toast("Test scheduled"); $("f").hidden = true; $("tt").value = ""; loadList();
+      }
+    } catch (x) { fail(errText(x)); }
+    $("save").disabled = false; $("save").textContent = "Schedule test";
+  };
+  async function loadList() {
+    const l = $("l"); l.innerHTML = `<div class="spin"></div>`;
+    let tests = [];
+    try { tests = (await getDocs(collection(db, "tests"))).docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => b.startMs - a.startMs); }
+    catch (x) { l.innerHTML = `<div class="err">${esc(errText(x))}</div>`; return; }
+    $("cnt").textContent = tests.length;
+    l.innerHTML = "";
+    if (!tests.length) { l.innerHTML = `<div class="empty"><h3>No tests scheduled</h3><p>Tap Schedule a test to set your first test series paper.</p></div>`; return; }
+    tests.forEach(t => {
+      const st = tStatus(t);
+      const b = document.createElement("button"); b.className = "item";
+      b.innerHTML = `<div class="mid"><b></b><span></span></div><div class="end"><span class="chip ${st === "live" ? "live" : st === "up" ? "up" : "end"}">${st === "live" ? "Live" : st === "up" ? "Upcoming" : "Ended"}</span></div>`;
+      b.querySelector(".mid b").textContent = t.title;
+      b.querySelector(".mid span").textContent = `Class ${t.cls} · ${t.subject} · ${fmtDT(t.startMs)} – ${fmtDT(t.endMs)} · ${t.qids.length} Q · ${t.durationMin} min`;
+      const d = document.createElement("div"); d.className = "detail"; d.hidden = true;
+      b.onclick = async () => { d.hidden = !d.hidden; if (!d.hidden) await seriesDetail(d, t, loadList); };
+      l.appendChild(b); l.appendChild(d);
+    });
+  }
+  loadList();
+}
+async function seriesDetail(d, t, reload) {
+  d.innerHTML = `<div class="spin"></div>`;
+  let rs = [];
+  try { rs = (await getDocs(query(collection(db, "results"), where("testId", "==", t.id)))).docs.map(x => x.data()); } catch (e) {}
+  rs.sort((a, b) => b.score - a.score || a.timeSec - b.timeSec);
+  d.innerHTML = `<div class="kv"><span>Chapters</span><b>${esc((t.chapters || []).join(", "))}</b></div><div class="kv"><span>Submitted</span><b>${rs.length}</b></div>
+    <div class="list" data-l></div>
+    <button class="btn btn-danger" data-del>Delete test</button>`;
+  const l = d.querySelector("[data-l]");
+  if (!rs.length) l.innerHTML = `<p class="hint">No submissions yet.</p>`;
+  rs.forEach((r, i) => {
+    const it = document.createElement("div"); it.className = "item";
+    it.innerHTML = `<div class="av ${i === 0 ? "r1" : ""}">${i + 1}</div><div class="mid"><b></b><span></span></div><div class="end">${r.score}<small>/${r.max}</small></div>`;
+    it.querySelector(".mid b").textContent = r.name;
+    it.querySelector(".mid span").textContent = `✓${r.correct} ✗${r.wrong} · ${fmtTime(r.timeSec)}`;
+    l.appendChild(it);
+  });
+  const del = d.querySelector("[data-del]");
+  del.onclick = async () => {
+    if (del.dataset.c !== "1") { del.dataset.c = "1"; del.textContent = "Tap again to delete this test"; return; }
+    try { await deleteDoc(doc(db, "tests", t.id)); toast("Test deleted"); reload(); } catch (x) { toast(errText(x)); }
+  };
+}
+
+/* ----- teacher: notices ----- */
+async function tabNotices(pane) {
+  pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
+    <form class="card" id="f" novalidate>
+      <h3 style="font-size:18px">Post a notice</h3>
+      <div class="field"><label for="nt1">Title</label><input id="nt1" type="text" placeholder="e.g. Holiday on Monday"></div>
+      <div class="field"><label for="nt2">Message</label><textarea id="nt2" placeholder="Write the announcement"></textarea></div>
+      <div class="two"><div class="field"><label for="nt3">Show to</label><select id="nt3"><option value="0">All classes</option>${CLASSES.map(c => `<option value="${c}">Class ${c}</option>`).join("")}</select></div>
+      <label class="chk-row" style="align-self:end;padding-bottom:10px"><input type="checkbox" id="nt4"> Pin to top</label></div>
+      <div class="err" id="err" hidden></div>
+      <button class="btn btn-navy" type="submit" id="save">Post notice</button>
+    </form>
+    <div class="sec-h"><h2 style="font-size:17px">Posted notices</h2><span id="cnt"></span></div>
+    <div class="list" id="l"></div></div>`;
+  const $ = id => document.getElementById(id);
+  $("f").onsubmit = async e => {
+    e.preventDefault(); $("err").hidden = true;
+    const title = $("nt1").value.trim(), body = $("nt2").value.trim();
+    if (!title || !body) { $("err").textContent = "Enter a title and a message."; $("err").hidden = false; return; }
+    $("save").disabled = true;
+    try { await addDoc(collection(db, "notices"), { title, body, cls: Number($("nt3").value), pinned: $("nt4").checked, atMs: Date.now(), at: serverTimestamp() }); $("f").reset(); toast("Notice posted"); load(); }
+    catch (x) { $("err").textContent = errText(x); $("err").hidden = false; }
+    $("save").disabled = false;
+  };
+  async function load() {
+    const l = $("l"); l.innerHTML = `<div class="spin"></div>`;
+    let ns = [];
+    try { ns = await loadNotices(0); } catch (x) { l.innerHTML = `<div class="err">${esc(errText(x))}</div>`; return; }
+    $("cnt").textContent = ns.length; l.innerHTML = "";
+    if (!ns.length) { l.innerHTML = `<div class="empty"><h3>No notices yet</h3><p>Posted notices appear on students' home screen.</p></div>`; return; }
+    ns.forEach(n => {
+      const row = document.createElement("div"); row.className = "row";
+      row.innerHTML = `<button class="btn btn-line" data-p>${n.pinned ? "Unpin" : "Pin"}</button><button class="btn btn-danger" data-d>Delete</button>`;
+      row.querySelector("[data-p]").onclick = async () => { try { await updateDoc(doc(db, "notices", n.id), { pinned: !n.pinned }); load(); } catch (x) { toast(errText(x)); } };
+      const del = row.querySelector("[data-d]");
+      del.onclick = async () => { if (del.dataset.c !== "1") { del.dataset.c = "1"; del.textContent = "Tap again"; return; } try { await deleteDoc(doc(db, "notices", n.id)); toast("Notice deleted"); load(); } catch (x) { toast(errText(x)); } };
+      l.appendChild(noticeCard(n, row));
+    });
+  }
+  load();
+}
