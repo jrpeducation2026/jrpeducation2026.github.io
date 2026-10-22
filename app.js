@@ -31,6 +31,28 @@ const SUBJECTS_LOWER = ["Mathematics", "Science", "English", "Hindi", "Social Sc
 const SUBJECTS_UPPER = ["Physics", "Chemistry", "Mathematics", "Biology", "English", "Hindi"];
 const GLYPH = { Mathematics: "∑", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
 const MEDIUMS = ["English", "Hindi"];
+// Official NCERT Maths textbook codes (ncert.nic.in). Each part: [code, number of chapters]
+const NCERT_BOOKS = {
+  "6|English": [["fegp1", 10]], "6|Hindi": [["fhgp1", 10]],
+  "7|English": [["gegp1", 8], ["gegp2", 7]], "7|Hindi": [["ghgp1", 8], ["ghgp2", 7]],
+  "8|English": [["hegp1", 7], ["hegp2", 7]], "8|Hindi": [["hhgp1", 7], ["hhgp2", 7]],
+  "9|English": [["iemh1", 12]], "9|Hindi": [["ihmh1", 12]],
+  "10|English": [["jemh1", 14]], "10|Hindi": [["jhmh1", 14]],
+  "11|English": [["kemh1", 14]], "11|Hindi": [["khmh1", 14]],
+  "12|English": [["lemh1", 6], ["lemh2", 7]], "12|Hindi": [["lhmh1", 6], ["lhmh2", 7]]
+};
+function ncertChapterUrl(cls, subject, medium, chapter) {
+  if (subject !== "Mathematics") return "";
+  const list = DEFAULT_SYLLABUS[`${cls}|${subject}|${medium}`] || [], parts = NCERT_BOOKS[`${cls}|${medium}`];
+  let i = list.indexOf(chapter);
+  if (i < 0 || !parts) return "";
+  for (const [code, n] of parts) { if (i < n) return `https://ncert.nic.in/textbook/pdf/${code}${String(i + 1).padStart(2, "0")}.pdf`; i -= n; }
+  return "";
+}
+function ncertBookUrls(cls, subject, medium) {
+  if (subject !== "Mathematics") return [];
+  return (NCERT_BOOKS[`${cls}|${medium}`] || []).map(([code, n]) => `https://ncert.nic.in/textbook.php?${code}=0-${n}`);
+}
 const DEFAULT_SYLLABUS = {
   "6|Mathematics|English": ["Patterns in Mathematics", "Lines and Angles", "Number Play", "Data Handling and Presentation", "Prime Time",
     "Perimeter and Area", "Fractions", "Playing with Constructions", "Symmetry", "The Other Side of Zero"],
@@ -397,6 +419,7 @@ VIEWS.chapters = async ({ cls, subject }) => {
       <div class="meta"><span>${FULL_Q} questions</span><span>+${MARK_RIGHT} / −${MARK_WRONG}</span>${fb ? `<span>Best: ${fb.score}/${fb.max}</span>` : ""}</div>
       <button class="btn btn-gold" id="full" style="align-self:flex-start">Start test</button>
     </div>
+    ${ncertBookUrls(cls, subject, myMed()).map((u, i, a) => `<a class="yt ncert" href="${u}" target="_blank" rel="noopener"><span class="yt-ic nb">N</span><span class="yt-t"><b>NCERT ${subject} Book${a.length > 1 ? " · Part " + (i + 1) : ""}</b><small>Official textbook · Class ${cls} · ${myMed()} medium</small></span><span class="yt-go">Open</span></a>`).join("")}
     <div class="sec-h"><h2>Chapters</h2><span>${chs.length}</span></div>
     <div class="chs" id="chs"></div>`;
   document.getElementById("full").onclick = () => go("test", { cls, subject, chapter: FULL });
@@ -406,7 +429,7 @@ VIEWS.chapters = async ({ cls, subject }) => {
     const d = document.createElement("div"); d.className = "ch";
     d.innerHTML = `<div class="ch-top"><div class="ch-n">${i + 1}</div><div class="ch-t"><h3>${esc(c)}</h3>
       <span class="${r ? "done" : ""}">${r ? `Best score: ${r.score}/${r.max}` : `${CHAPTER_Q} questions · Not attempted`}</span></div></div>
-      <div class="ch-b"><button class="btn btn-gold" data-a="t">Take test</button><button class="btn btn-line" data-a="n">Notes</button></div>`;
+      <div class="ch-b"><button class="btn btn-gold" data-a="t">Take test</button><button class="btn btn-line" data-a="n">Notes</button>${ncertChapterUrl(cls, subject, myMed(), c) ? `<a class="btn btn-line" href="${ncertChapterUrl(cls, subject, myMed(), c)}" target="_blank" rel="noopener">NCERT</a>` : ""}</div>`;
     d.querySelector('[data-a="t"]').onclick = () => go("test", { cls, subject, chapter: c });
     d.querySelector('[data-a="n"]').onclick = () => go("notes", { cls, subject, chapter: c });
     list.appendChild(d);

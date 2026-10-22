@@ -255,3 +255,5 @@ main.chatmain .in{padding-bottom:150px}
 .att{display:flex;align-items:center;gap:10px}
 .att img{height:56px;border-radius:8px;border:1px solid var(--line)}
 .qimg{display:block;max-width:220px;max-height:220px;border-radius:10px;margin-bottom:6px}
+.yt-ic.nb{background:var(--navy);color:var(--gold);font-weight:800;font-family:var(--f-display);font-size:18px}
+.yt.ncert .yt-go{color:var(--royal)}
