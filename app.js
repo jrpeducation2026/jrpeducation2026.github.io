@@ -28,8 +28,9 @@ async function isTeacherEmail(email) {
 }
 const STUDENT_DOMAIN = "students.jrpeducation.app";
 const CLASSES = [6, 7, 8, 9, 10, 11, 12];
-const SUBJECTS_LOWER = ["Mathematics", "Vedic Maths", "Olympiad Maths", "Science", "English", "Hindi", "Social Science", "Sanskrit"];
-const SUBJECTS_UPPER = ["Mathematics", "Vedic Maths", "Olympiad Maths", "Physics", "Chemistry", "Biology", "English", "Hindi"];
+// Only Mathematics for now. Add subject names here later to bring them back.
+const SUBJECTS_LOWER = ["Mathematics"];
+const SUBJECTS_UPPER = ["Mathematics"];
 const GLYPH = { Mathematics: "∑", "Vedic Maths": "Ve", "Olympiad Maths": "Ol", Science: "Sc", English: "En", Hindi: "Hi", "Social Science": "SS", Sanskrit: "Sa", Physics: "Ph", Chemistry: "Ch", Biology: "Bi" };
 const MEDIUMS = ["English", "Hindi"];
 // Official NCERT Maths textbook codes (ncert.nic.in). Each part: [code, number of chapters]
@@ -448,8 +449,6 @@ function ring(pct, size = 76) {
 function courseList(cls) {
   return [
     { id: "maths", title: cls <= 10 ? "Foundation Maths" : "Mathematics", sub: `Class ${cls} · NCERT`, icon: "book", tone: "t-blue", subject: "Mathematics" },
-    { id: "vedic", title: "Vedic Maths", sub: "Tricks & Techniques", icon: "bolt", tone: "t-gold", subject: "Vedic Maths", soon: true },
-    { id: "olympiad", title: "Olympiad Maths", sub: "Puzzles & Challenges", icon: "trophy", tone: "t-green", subject: "Olympiad Maths", soon: true },
     { id: "board", title: "RBSE Board", sub: "Notes & Questions", icon: "board", tone: "t-purple", view: "board10" }
   ];
 }
@@ -530,7 +529,7 @@ VIEWS.courses = () => {
     <div class="sec-h"><h2>My Courses</h2><span>Class ${cls} · ${myMed()}</span></div>
     <div class="tiles" id="tiles"></div>
     ${mockCard()}
-    <div class="sec-h"><h2>All classes & subjects</h2><span>6th to 12th</span></div>
+    <div class="sec-h"><h2>Maths for all classes</h2><span>6th to 12th</span></div>
     <div class="classes" id="cg"></div>
   </div></main>`;
   courseTiles(document.getElementById("tiles"), cls);
@@ -540,7 +539,7 @@ VIEWS.courses = () => {
     const b = document.createElement("button");
     b.className = "cls" + (n === 10 || n === 12 ? " board" : "") + (cls === n ? " mine" : "");
     b.innerHTML = `<b>${n}<sup>th</sup></b><span>${cls === n ? "Your class" : (n === 10 || n === 12 ? "Board" : "Class")}</span>`;
-    b.onclick = () => go("subjects", { cls: n });
+    b.onclick = () => go("chapters", { cls: n, subject: "Mathematics" });
     cg.appendChild(b);
   });
 };
