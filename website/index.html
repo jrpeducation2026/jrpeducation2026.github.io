@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" href="../icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Mukta:wght@400;500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Montserrat:wght@500;600;700&family=Mukta:wght@400;500;700;800&display=swap">
 <style>
 /* Layout: cinematic full-screen frames. One frame on screen at a time; a swipe up plays a reveal into the next.
    Without JS the frames simply stack and scroll. */
@@ -121,6 +121,16 @@ button{font:inherit;cursor:pointer;color:inherit}
 .nums span{font-family:var(--f-display);font-size:clamp(40px,11vw,96px);line-height:1;width:1.25em;text-align:center}
 .nums span.hi{color:var(--gold)}
 
+/* 3 maths sections */
+.clean{font-family:"Montserrat",var(--f-body);font-weight:600;font-size:clamp(30px,8.4vw,72px);line-height:1.08;letter-spacing:-.01em}
+.clean em{font-style:normal;font-weight:500;background:linear-gradient(100deg,var(--gold-2),var(--gold) 45%,var(--ember));-webkit-background-clip:text;background-clip:text;color:transparent}
+.msec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.msec div{position:relative;background:rgba(10,8,18,.72);border:1px solid var(--line);border-radius:14px;padding:clamp(12px,2vh,18px) 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.msec i{font-family:"Montserrat",var(--f-body);font-style:normal;font-weight:600;font-size:13px;letter-spacing:.12em;color:var(--gold)}
+.msec b{font-family:"Montserrat",var(--f-body);font-weight:600;font-size:clamp(17px,4.6vw,22px);line-height:1.15}
+.msec span{font-size:13px;color:var(--mist);line-height:1.4}
+.msec small{position:absolute;top:12px;right:12px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#000;background:var(--gold);border-radius:999px;padding:2px 8px}
+@media (max-height:700px){.msec span{font-size:12px}.clean{font-size:clamp(26px,7.4vw,60px)}}
 /* 3 features */
 .feat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
 .feat div{background:rgba(5,5,5,.72);padding:clamp(10px,2vh,16px) 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -235,15 +245,13 @@ button{font:inherit;cursor:pointer;color:inherit}
   <section class="frame f3" aria-label="App">
     <div class="bg b3"></div><div class="shade"></div>
     <div class="wrap">
-      <p class="kick up">The App</p>
-      <h2 class="big"><span class="mask" style="--d:1"><span>Think.</span></span><span class="mask" style="--d:2"><span class="fire">Learn.</span></span><span class="mask" style="--d:3"><span>Grow.</span></span><span class="mask" style="--d:4"><span class="fire">Succeed.</span></span></h2>
-      <div class="feat up" style="--d:6">
-        <div><b>Chapter Tests</b><span>+4 / −1, har sawal ka hal</span></div>
-        <div><b>Test Series</b><span>Fixed date, class rank</span></div>
-        <div><b>NareX AI</b><span>Photo bhejo, step-by-step hal</span></div>
-        <div><b>Daily Challenge</b><span>Roz ek sawal, streak</span></div>
-        <div><b>Notes &amp; Videos</b><span>Har chapter ke saath</span></div>
-        <div><b>Free Mock Test</b><span>Bina login, abhi try karo</span></div>
+      <p class="kick up">Our Maths Sections</p>
+      <h2 class="clean"><span class="mask" style="--d:1"><span>Think. <em>Learn.</em></span></span><span class="mask" style="--d:2"><span>Grow. <em>Succeed.</em></span></span></h2>
+      <div class="msec up" style="--d:4">
+        <div><i>01</i><b>RBSE Maths</b><span>Rajasthan Board, Class 6 to 12. Chapter tests, notes and board-pattern practice.</span></div>
+        <div><i>02</i><b>CBSE Maths</b><span>NCERT-based Maths for Class 6 to 12 with chapter-wise tests and solutions.</span></div>
+        <div><i>03</i><b>Vedic Maths</b><span>Fast calculation tricks to solve sums in seconds.</span><small>Coming soon</small></div>
+        <div><i>04</i><b>Advance Maths</b><span>Olympiad and competitive-level problems for sharp minds.</span><small>Coming soon</small></div>
       </div>
     </div>
   </section>
