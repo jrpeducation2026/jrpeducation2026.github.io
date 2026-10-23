@@ -70,7 +70,9 @@ button{font:inherit;cursor:pointer;color:inherit}
 .top{position:fixed;inset:0 0 auto;z-index:20;padding-top:env(safe-area-inset-top,0px);pointer-events:none}
 .top .in{max-width:1080px;margin:0 auto;padding:14px max(22px,env(safe-area-inset-right,0px)) 14px max(22px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px}
 .top img{width:40px;height:40px;object-fit:contain;background:#fff;border-radius:50%;padding:3px;pointer-events:auto}
-.top b{font-family:var(--f-display);font-size:20px;letter-spacing:.06em;flex:1}
+.brand{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.05}
+.brand b{font-family:var(--f-display);font-size:20px;letter-spacing:.06em;font-weight:400}
+.brand small{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-top:3px;white-space:nowrap}
 .top a{pointer-events:auto}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:4px;padding:14px 22px;font-weight:800;text-decoration:none;border:0;
   font-size:15px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;transition:transform .2s,background .2s}
@@ -202,7 +204,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 <body>
 <header class="top"><div class="in">
   <img src="../logo.png" alt="JRP Education">
-  <b>JRP EDUCATION</b>
+  <span class="brand"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></span>
   <a class="btn btn-gold" href="../">Open App</a>
 </div></header>
 
