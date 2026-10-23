@@ -189,7 +189,52 @@ function render() {
 }
 $nav.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) resetTo(b.dataset.tab); });
 $tnav.addEventListener("click", e => { const b = e.target.closest("[data-sec]"); if (b) resetTo("teacher", { sec: b.dataset.sec }); });
-$app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); });
+$app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); if (e.target.closest("[data-menu]")) openDrawer(); });
+
+/* ----- student side menu (drawer) ----- */
+function openDrawer() {
+  const p = S.profile; if (!p) return;
+  const old = document.getElementById("drawer"); if (old) old.remove();
+  const nNew = ALERTS.notices;
+  const item = (key, icon, label, end = "") => `<button class="dr-i" data-dr="${key}">${svg(icon)}<span>${label}</span>${end}</button>`;
+  const d = document.createElement("div"); d.id = "drawer"; d.className = "drawer";
+  d.innerHTML = `<div class="dr-bg" data-dr="close"></div>
+    <aside class="dr-panel" role="dialog" aria-label="Menu">
+      <div class="dr-head">
+        <div class="dr-av">${esc(initials(p.name))}</div>
+        <div class="dr-who"><b>${esc(p.name)}</b><span>${esc(p.username || "")}</span><span>Class ${esc(p.cls)} · ${myMed()} medium</span>
+          <button class="link" data-dr="profile">View profile</button></div>
+      </div>
+      <nav class="dr-list">
+        ${item("home", "board", "Home")}
+        ${item("series", "trophy", "Test Series", `<em class="dr-ok">Active</em>`)}
+        ${item("notes", "notes", "Study Notes", `<em class="dr-ok">Active</em>`)}
+        ${item("books", "books", "Books", `<em class="dr-new">NEW</em>`)}
+        ${item("results", "test", "My Results")}
+        ${item("notices", "bell", "Notifications", nNew ? `<em class="dr-new">${nNew}</em>` : "")}
+        ${item("doubt", "help", "Doubts", `<em class="dr-ask">Ask a Doubt ${svg("spark")}</em>`)}
+        ${item("logout", "logout", "Log out")}
+      </nav>
+    </aside>`;
+  document.body.appendChild(d);
+  requestAnimationFrame(() => d.classList.add("open"));
+  const close = () => { d.classList.remove("open"); setTimeout(() => d.remove(), 260); };
+  d.addEventListener("click", e => {
+    const b = e.target.closest("[data-dr]"); if (!b) return;
+    const k = b.dataset.dr; close();
+    const cls = Number(p.cls);
+    if (k === "close") return;
+    if (k === "home") resetTo("home");
+    else if (k === "series") go("series");
+    else if (k === "notes") go("chapters", { cls, subject: "Mathematics" });
+    else if (k === "books") go("book", { id: BOOKS[0].id });
+    else if (k === "results") go("results");
+    else if (k === "notices") go("notices");
+    else if (k === "doubt") go("narex");
+    else if (k === "profile") resetTo("profile");
+    else if (k === "logout") signOut(auth);
+  });
+}
 
 /* ---------- data ---------- */
 const VIDEOS = {};
@@ -446,7 +491,8 @@ const ICON = {
 };
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 function appbar(right = "") {
-  return `<header class="appbar"><div class="in"><img src="${LOGO}" alt="" class="ab-logo"><div class="ab-t"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></div>${right}</div></header>`;
+  const menu = S.profile && !S.admin ? `<button class="ab-menu" data-menu aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>` : "";
+  return `<header class="appbar"><div class="in">${menu}<img src="${LOGO}" alt="" class="ab-logo"><div class="ab-t"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></div>${right}</div></header>`;
 }
 function ring(pct, size = 76) {
   const r = (size - 10) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
