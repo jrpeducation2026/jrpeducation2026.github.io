@@ -448,16 +448,17 @@ function ring(pct, size = 76) {
 function courseList(cls) {
   return [
     { id: "maths", title: cls <= 10 ? "Foundation Maths" : "Mathematics", sub: `Class ${cls} · NCERT`, icon: "book", tone: "t-blue", subject: "Mathematics" },
-    { id: "vedic", title: "Vedic Maths", sub: "Tricks & Techniques", icon: "bolt", tone: "t-gold", subject: "Vedic Maths" },
-    { id: "olympiad", title: "Olympiad Maths", sub: "Puzzles & Challenges", icon: "trophy", tone: "t-green", subject: "Olympiad Maths" },
+    { id: "vedic", title: "Vedic Maths", sub: "Tricks & Techniques", icon: "bolt", tone: "t-gold", subject: "Vedic Maths", soon: true },
+    { id: "olympiad", title: "Olympiad Maths", sub: "Puzzles & Challenges", icon: "trophy", tone: "t-green", subject: "Olympiad Maths", soon: true },
     { id: "board", title: "RBSE Board", sub: "Notes & Questions", icon: "board", tone: "t-purple", view: "board10" }
   ];
 }
 function courseTiles(box, cls) {
   courseList(cls).forEach(c => {
     const b = document.createElement("button"); b.className = "tile " + c.tone;
-    b.innerHTML = `<span class="ti">${svg(c.icon)}</span><b>${esc(c.title)}</b><small>${esc(c.sub)}</small>`;
+    b.innerHTML = `<span class="ti">${svg(c.icon)}</span><b>${esc(c.title)}</b><small>${esc(c.sub)}</small>${c.soon ? `<span class="soon-chip">Coming soon</span>` : ""}`;
     b.onclick = async () => {
+      if (c.soon) return toast(`${c.title} is coming soon.`);
       if (c.view) return go(c.view, { cls });
       const chs = await getSyllabus(cls, c.subject, myMed());
       chs.length ? go("chapters", { cls, subject: c.subject }) : toast(`${c.title} will be added soon.`);
@@ -680,9 +681,10 @@ VIEWS.subjects = async ({ cls }) => {
   subs.forEach((s, i) => {
     const n = lists[i].length;
     const b = document.createElement("button");
-    b.className = "sub" + (n ? " on" : "");
-    b.innerHTML = `<div class="glyph">${esc(GLYPH[s] || s[0])}</div><h3>${esc(s)}</h3>` + (n ? `<span>${n} chapters</span>` : `<span class="soon">Coming soon</span>`);
-    b.onclick = () => n ? go("chapters", { cls, subject: s }) : toast("Tests for this subject will be added soon.");
+    const soon = !n || s === "Vedic Maths" || s === "Olympiad Maths";
+    b.className = "sub" + (soon ? "" : " on");
+    b.innerHTML = `<div class="glyph">${esc(GLYPH[s] || s[0])}</div><h3>${esc(s)}</h3>` + (soon ? `<span class="soon">Coming soon</span>` : `<span>${n} chapters</span>`);
+    b.onclick = () => soon ? toast(`${s} is coming soon.`) : go("chapters", { cls, subject: s });
     sg.appendChild(b);
   });
 };

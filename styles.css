@@ -374,14 +374,3 @@ img{-webkit-user-drag:none}
 /* coming soon on course tiles */
 .tile .soon-chip{position:absolute;top:10px;right:10px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:rgba(0,0,0,.28);color:#fff;border-radius:999px;padding:2px 8px}
 .t-gold .soon-chip{background:rgba(74,54,0,.18);color:#4a3600}
-/* formula book promo banner */
-.promo{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border:0;border-radius:18px;padding:12px 14px;background:linear-gradient(120deg,#1a1240,#3a1f7a 55%,#7a3fb0);color:#fff;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(58,31,122,.28)}
-.promo::after{content:"";position:absolute;right:-40px;bottom:-50px;width:150px;height:150px;border-radius:50%;background:rgba(214,161,24,.18)}
-.pm-cover{width:70px;height:96px;object-fit:cover;border-radius:8px;flex:none;box-shadow:0 4px 12px rgba(0,0,0,.35);transform:rotate(-4deg);position:relative;z-index:1}
-.pm-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;position:relative;z-index:1}
-.pm-tag{align-self:flex-start;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:var(--gold);color:var(--navy);border-radius:999px;padding:2px 9px}
-.pm-t b{font-family:var(--f-display);font-size:19px;line-height:1.15;color:#fff}
-.pm-t small{font-size:12px;color:#d9cff5}
-.pm-row{display:flex;align-items:center;gap:10px;margin-top:4px;flex-wrap:wrap}
-.pm-price{font-family:var(--f-display);font-weight:800;font-size:24px;color:var(--gold);line-height:1}
-.pm-cta{font-size:13px;font-weight:700;background:#fff;color:#3a1f7a;border-radius:999px;padding:5px 12px}
