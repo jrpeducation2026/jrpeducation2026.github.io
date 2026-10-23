@@ -179,7 +179,7 @@ function render() {
   window.scrollTo(0, 0);
   const v = VIEWS[current.view];
   const tabs = { home: "home", notices: "home", courses: "courses", subjects: "courses", chapters: "courses", notes: "courses", board10: "courses",
-    practice: "practice", daily: "practice", tests: "tests", results: "tests", board: "tests", series: "tests", profile: "profile" };
+    practice: "tests", daily: "tests", tests: "tests", series: "tests", results: "results", board: "results", profile: "profile" };
   $nav.hidden = !tabs[current.view];
   $nav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tabs[current.view] ? "page" : "false"));
   const sec = current.view === "teacher" ? (current.args.sec || "dash") : "";
@@ -192,7 +192,7 @@ function render() {
 }
 $nav.addEventListener("click", e => { const b = e.target.closest("[data-tab]"); if (b) resetTo(b.dataset.tab); });
 $tnav.addEventListener("click", e => { const b = e.target.closest("[data-sec]"); if (b) resetTo("teacher", { sec: b.dataset.sec }); });
-$app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); if (e.target.closest("[data-menu]")) openDrawer(); });
+$app.addEventListener("click", e => { if (e.target.closest("[data-back]")) history.back(); if (e.target.closest("[data-menu]")) openDrawer(); if (e.target.closest("[data-tchip]")) resetTo("teacher", { sec: "more" }); });
 
 /* ----- student side menu (drawer) ----- */
 function openDrawer() {
@@ -485,6 +485,7 @@ const ICON = {
   user: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/>',
+  download: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 18v2h16v-2"/>',
   video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3z"/>',
   megaphone: '<path d="M3 10v4h4l7 5V5L7 10z"/><path d="M17 9a4 4 0 0 1 0 6"/>',
   rupee: '<path d="M6 4h12M6 9h12M9 4c4 0 6 2 6 5s-2 5-6 5H6l8 7"/>',
@@ -494,9 +495,14 @@ const ICON = {
 };
 const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 function appbar(right = "") {
-  const menu = S.profile && !S.admin ? `<button class="ab-menu" data-menu aria-label="Menu"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>` : "";
-  return `<header class="appbar"><div class="in">${menu}<img src="${LOGO}" alt="" class="ab-logo"><div class="ab-t"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></div>${right}</div></header>`;
+  const chev = `<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>`;
+  let chip = "";
+  if (S.admin) chip = `<button class="ab-chip" data-tchip aria-label="Teacher menu"><span class="ab-av t">${svg("board")}</span><span class="ab-ct"><b>Teacher</b><small>JRP Admin</small></span>${chev}</button>`;
+  else if (S.profile) chip = `<button class="ab-chip" data-menu aria-label="Menu"><span class="ab-av">${esc(initials(S.profile.name))}</span><span class="ab-ct"><b>${esc((S.profile.name || "").split(" ")[0])}</b><small>Class ${esc(S.profile.cls)}</small></span>${chev}</button>`;
+  return `<header class="appbar"><div class="in"><img src="${LOGO}" alt="" class="ab-logo"><div class="ab-t"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></div>${right}${chip}</div></header>`;
 }
+const greet = () => { const h = new Date().getHours(); return h < 12 ? "Good Morning" : h < 17 ? "Good Afternoon" : "Good Evening"; };
+const fmtDur = sec => { const m = Math.round(sec / 60); return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`; };
 function ring(pct, size = 76) {
   const r = (size - 10) / 2, c = 2 * Math.PI * r, off = c * (1 - pct / 100);
   return `<svg class="ring" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" class="ring-bg"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" class="ring-fg" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/><text x="50%" y="54%" text-anchor="middle" class="ring-t">${pct}%</text></svg>`;
@@ -568,36 +574,52 @@ async function fillTopper(box) {
 
 VIEWS.home = () => {
   const p = S.profile, cls = Number(p.cls), first = (p.name || "").split(" ")[0];
-  $app.innerHTML = appbar(`<button class="ab-bell" id="bell" aria-label="Notices">${svg("bell")}<i id="bdot" hidden></i></button>`) + `
+  $app.innerHTML = appbar(`<button class="ab-bell" id="bell" aria-label="Notifications">${svg("bell")}<i id="bdot" hidden></i></button>`) + `
   <main><div class="in">
     <div id="topper" hidden></div>
-    <button class="promo" id="promo" data-book="${BOOKS[0].id}">
+    <section class="hero">
+      <div class="hero-t">
+        <small>${greet()},</small>
+        <h1>${esc(first)}! <span aria-hidden="true">👋</span></h1>
+        <p>Keep learning, keep growing with JRP Education.</p>
+        <button class="btn btn-gold" id="cont">Continue Learning →</button>
+      </div>
+      <div class="hero-art" aria-hidden="true"><span>Think</span><span>Learn</span><span>Grow</span><span>Succeed</span></div>
+    </section>
+    <div class="scards" id="sc">
+      <div class="sc"><span class="sci c-green">${svg("test")}</span><small>Total Tests</small><b>–</b><em>&nbsp;</em></div>
+      <div class="sc"><span class="sci c-blue">${svg("spark")}</span><small>Your Score</small><b>–</b><em>&nbsp;</em></div>
+      <div class="sc"><span class="sci c-gold">${svg("trophy")}</span><small>Rank</small><b>–</b><em>Class Rank</em></div>
+      <div class="sc"><span class="sci c-purple">${svg("target")}</span><small>Test Time</small><b>–</b><em>This week</em></div>
+    </div>
+    <button class="promo" id="promo">
       <img src="${BOOKS[0].cover}" alt="" class="pm-cover">
       <span class="pm-t"><span class="pm-tag">${BOOKS[0].demo ? "Demo Book · Try at ₹9" : "New · Formula Book"}</span><b>${esc(BOOKS[0].title)}</b><small>${esc(BOOKS[0].sub)}</small>
         <span class="pm-row"><span class="pm-price">₹${BOOKS[0].price}</span><span class="pm-cta" id="pmCta">Unlock now →</span></span></span>
     </button>
-    <div class="welcome"><div class="wl-av">${esc(initials(p.name))}</div><div class="wl-t"><small>Welcome back!</small><h1>${esc(first)}</h1><p>Class ${cls} · ${myMed()} medium · Keep learning, keep growing!</p></div></div>
-    <button class="progress card" id="prog"><span class="pr-ring">${ring(0)}</span><span class="pr-t"><small>Your learning progress</small><b id="prN">–/–</b><span>Maths chapters completed</span></span><span class="link">View details →</span></button>
     <button class="banner live" id="liveAlert" hidden></button>
     <div class="list" id="notices" hidden></div>
-    <div class="sec-h"><h2>My Courses</h2><button class="link" id="allC">View all →</button></div>
-    <div class="tiles" id="tiles"></div>
-    <div class="quick">
-      <button data-q="notes"><span class="qi q-orange">${svg("notes")}</span>Notes</button>
-      <button data-q="tests"><span class="qi q-green">${svg("test")}</span>Tests</button>
-      <button data-q="doubt"><span class="qi q-blue">${svg("help")}</span>Doubt Support</button>
-      <button data-q="books"><span class="qi q-red">${svg("books")}</span>Books</button>
+    <div class="sec-h"><h2><span class="sh-ic">${svg("book")}</span>My Learning</h2><button class="link" id="allC">See All ›</button></div>
+    <div class="ml" id="ml"></div>
+    <div class="sec-h"><h2><span class="sh-ic">${svg("bolt")}</span>Quick Access</h2></div>
+    <div class="qa">
+      <button data-q="test"><span class="qi q-red">${svg("test")}</span>Take Test</button>
+      <button data-q="results"><span class="qi q-purple">${svg("chart")}</span>View Results</button>
+      <button data-q="notes"><span class="qi q-blue">${svg("video")}</span>Notes &amp; Videos</button>
+      <button data-q="material"><span class="qi q-green">${svg("books")}</span>Study Material</button>
+      <button data-q="doubt"><span class="qi q-navy">${svg("help")}</span>Doubt Solving<small>Ask NareX</small></button>
+      <button data-q="ncert"><span class="qi q-gold">${svg("download")}</span>NCERT Book</button>
+      <button data-q="rank"><span class="qi q-teal">${svg("trophy")}</span>Leaderboard</button>
+      <button data-q="daily"><span class="qi q-orange">${svg("target")}</span>Daily Challenge</button>
     </div>
-    <button class="banner challenge" id="daily"><span class="ic">${svg("target")}</span><div style="flex:1;min-width:0"><h3>Daily Maths Challenge</h3><p id="dailyT">Solve a new question every day!</p></div><span class="go">→</span></button>
-    <div class="sec-h"><h2>Test Series</h2><button class="link" id="allT">View all →</button></div>
-    <div class="chs" id="series"></div>
-    <div class="sec-h" id="booksH"><h2>Books</h2><span>Study material</span></div>
-    <div class="list" id="books"></div>
+    <div class="sec-h"><h2><span class="sh-ic">${svg("trophy")}</span>Upcoming Tests</h2><button class="link" id="allT">View All ›</button></div>
+    <div class="list" id="up"><div class="spin"></div></div>
     ${ytCard()}
   </div></main>`;
   const $ = id => document.getElementById(id);
-  courseTiles($("tiles"), cls);
+  const chap = () => go("chapters", { cls, subject: "Mathematics" });
   fillTopper($("topper"));
+  $("cont").onclick = chap;
   $("promo").onclick = () => go("book", { id: BOOKS[0].id });
   myPurchase(BOOKS[0]).then(pur => {
     const c = $("pmCta"); if (!c || !pur) return;
@@ -607,17 +629,59 @@ VIEWS.home = () => {
   $("allC").onclick = () => resetTo("courses");
   $("allT").onclick = () => go("series");
   $("bell").onclick = () => go("notices");
-  $("daily").onclick = () => go("daily");
-  $("prog").onclick = () => go("chapters", { cls, subject: "Mathematics" });
-  $app.querySelector('[data-q="notes"]').onclick = () => go("chapters", { cls, subject: "Mathematics" });
-  $app.querySelector('[data-q="tests"]').onclick = () => resetTo("tests");
-  $app.querySelector('[data-q="doubt"]').onclick = () => go("narex");
-  $app.querySelector('[data-q="books"]').onclick = () => $("booksH").scrollIntoView({ behavior: "smooth" });
-  if (dailyState().done) $("dailyT").textContent = `Done for today · ${dailyStreak()} day streak`;
-  learningProgress(cls).then(pr => { const e = $("prN"); if (!e) return; e.textContent = `${pr.done}/${pr.total}`; $app.querySelector(".pr-ring").innerHTML = ring(pr.pct); });
-  fillBooks($("books"));
-  fillSeries($("series"), false);
+  const Q = { test: () => resetTo("tests"), results: () => resetTo("results"), notes: chap, material: () => go("book", { id: BOOKS[0].id }),
+    doubt: () => go("narex"), rank: () => go("board"), daily: () => go("daily"),
+    ncert: () => { const u = ncertBookUrls(cls, "Mathematics", myMed())[0]; if (u) window.open(u, "_blank", "noopener"); else toast("NCERT book link not available"); } };
+  $app.querySelectorAll("[data-q]").forEach(b => b.onclick = Q[b.dataset.q]);
+  // My Learning tiles
+  getSyllabus(cls, "Mathematics", myMed()).then(chs => {
+    const ml = $("ml"); if (!ml) return;
+    const tiles = [
+      { t: "Mathematics", s: `${chs.length} Chapters`, ic: "book", c: "q-blue", f: chap },
+      { t: "RBSE Board", s: "Board prep", ic: "board", c: "q-green", f: () => go("board10", { cls }) },
+      { t: "Demo Book", s: `₹${BOOKS[0].price}`, ic: "books", c: "q-orange", f: () => go("book", { id: BOOKS[0].id }) },
+      { t: "Mock Test", s: "Free", ic: "test", c: "q-purple", f: () => go("mock") }
+    ];
+    tiles.forEach(x => { const b = document.createElement("button"); b.className = "ml-t"; b.innerHTML = `<span class="qi ${x.c}">${svg(x.ic)}</span><b>${x.t}</b><small>${x.s} ›</small>`; b.onclick = x.f; ml.appendChild(b); });
+  });
+  // stat cards
+  (async () => {
+    let mine = [], cr = [];
+    try { [mine, cr] = await Promise.all([loadMyResults(), getDocs(query(collection(db, "results"), where("studentCls", "==", cls))).then(x => x.docs.map(d => d.data()))]); } catch (e) {}
+    const fin = mine.filter(r => !(r.endMs && r.endMs > Date.now()));
+    const wk = weekStart(0), thisWeek = fin.filter(r => r.atMs >= wk);
+    const avg = fin.length ? Math.round(fin.reduce((a, r) => a + Math.max(0, r.score) / r.max, 0) / fin.length * 100) : null;
+    const rows = rankRows(cr.filter(r => (r.studentMedium || "English") === myMed() && !(r.endMs && r.endMs > Date.now())), "all");
+    const rk = rows.findIndex(u => u.uid === S.user.uid) + 1;
+    const secs = thisWeek.reduce((a, r) => a + (r.timeSec || 0), 0);
+    const sc = $("sc"); if (!sc) return;
+    const set = (i, val, sub) => { const c = sc.children[i]; c.querySelector("b").textContent = val; if (sub !== undefined) c.querySelector("em").innerHTML = sub; };
+    set(0, fin.length, thisWeek.length ? `<span class="up">↗ +${thisWeek.length}</span> this week` : "Start now");
+    set(1, avg === null ? "–" : `${avg}%`, avg === null ? "No tests yet" : "Average");
+    set(2, rk ? rk : "–", rk ? `of ${rows.length} · Class Rank` : "Class Rank");
+    set(3, secs ? fmtDur(secs) : "0m", "This week");
+  })();
+  // upcoming tests
+  (async () => {
+    const up = $("up"); let tests = [], mine = [];
+    try { [tests, mine] = await Promise.all([loadTests(cls), loadMyResults()]); } catch (e) {}
+    if (!up) return;
+    const done = new Set(mine.filter(r => r.testId).map(r => r.testId));
+    const list = tests.filter(t => tStatus(t) !== "ended" && !done.has(t.id)).slice(0, 3);
+    up.innerHTML = list.length ? "" : `<div class="empty"><h3>No upcoming tests</h3><p>New tests from JRP Education will appear here.</p></div>`;
+    list.forEach(t => {
+      const d = new Date(t.startMs), live = tStatus(t) === "live";
+      const el = document.createElement("div"); el.className = "upt";
+      el.innerHTML = `<div class="up-d"><small>${d.toLocaleDateString("en-IN", { month: "short" }).toUpperCase()}</small><b>${d.getDate()}</b></div>
+        <div class="up-t"><b></b><span>${t.qids.length} Questions · ${t.durationMin} Minutes</span></div>
+        ${live ? `<button class="btn btn-blue">Start Test</button>` : `<span class="up-o">Opens ${esc(d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }))}</span>`}`;
+      el.querySelector(".up-t b").textContent = `${t.subject} · ${t.title}`;
+      const b = el.querySelector("button"); if (b) b.onclick = () => go("stest", { id: t.id });
+      up.appendChild(el);
+    });
+  })();
   fillNotices($("notices"), false).then(() => { const d = $("bdot"); if (d) d.hidden = !ALERTS.notices; });
+  fillSeries(document.createElement("div"), false);
 };
 
 VIEWS.courses = () => {
@@ -753,8 +817,10 @@ VIEWS.tests = async () => {
       <div class="meta"><span>${FULL_Q} questions</span><span>+${MARK_RIGHT} / −${MARK_WRONG}</span></div>
       <button class="btn btn-gold" id="full" style="align-self:flex-start">Start test</button></div>
     <button class="banner" id="chap"><div class="ic">∑</div><div><h3>Chapter-wise tests</h3><p>Pick a chapter and test yourself.</p></div></button>
+    <button class="pcard" id="prac"><span class="qi q-red">${svg("target")}</span><span class="pc-t"><b>Practice</b><small>Your mistakes, quick practice, daily challenge</small></span><span class="go">→</span></button>
     ${mockCard()}
   </div></main>`;
+  document.getElementById("prac").onclick = () => go("practice");
   const $ = id => document.getElementById(id);
   $("res").onclick = () => go("results"); $("rank").onclick = () => go("board"); $("allT").onclick = () => go("series");
   $("full").onclick = () => go("test", { cls, subject: "Mathematics", chapter: FULL });
@@ -1638,7 +1704,7 @@ const TSECS = {
   more: [["nb", "Notices"], ["pay", "Payments"]]
 };
 VIEWS.teacher = async ({ sec = "dash", sub } = {}) => {
-  const bar = appbar(`<button class="ab-nx" id="nxb">${svg("spark")}NareX</button>`);
+  const bar = appbar(`<button class="ab-bell" id="tbell" aria-label="Needs attention">${svg("bell")}<i id="tbdot" hidden></i></button>`);
   if (sec === "dash") return teacherDash(bar);
   if (sec === "st") { TTAB = "st"; }
   else { const list = TSECS[sec]; if (!list.some(x => x[0] === TTAB)) TTAB = sub || list[0][0]; }
@@ -1649,7 +1715,7 @@ VIEWS.teacher = async ({ sec = "dash", sub } = {}) => {
     <div id="pane"></div>
     ${sec === "more" ? `<button class="pcard" id="out"><span class="qi q-red">${svg("logout")}</span><span class="pc-t"><b>Log out</b><small>Teacher account</small></span></button>` : ""}
   </div></main>`;
-  document.getElementById("nxb").onclick = () => go("narex");
+  document.getElementById("tbell").onclick = () => { TTAB = "pay"; resetTo("teacher", { sec: "more" }); };
   const o = document.getElementById("out"); if (o) o.onclick = () => signOut(auth);
   const ad = document.getElementById("allD"); if (ad) ad.onclick = () => go("allStudents");
   $app.querySelectorAll(".tb").forEach(b => b.onclick = () => { TTAB = b.dataset.t; showTab(); });
@@ -1681,7 +1747,15 @@ function growthChart(times) {
 }
 async function teacherDash(bar) {
   $app.innerHTML = bar + `<main><div class="in">
-    <div class="welcome t"><div class="wl-av">${svg("board")}</div><div class="wl-t"><small>JRP Education</small><h1>Welcome, Teacher!</h1><p>Create · Teach · Inspire</p></div></div>
+    <section class="hero t">
+      <div class="hero-t">
+        <small>${greet()},</small>
+        <h1>Teacher! <span aria-hidden="true">👋</span></h1>
+        <p>Manage your classroom effortlessly with JRP Education.</p>
+        <button class="btn btn-gold" id="ana">View Analytics →</button>
+      </div>
+      <div class="hero-art" aria-hidden="true"><span>Teach</span><span>Create</span><span>Inspire</span></div>
+    </section>
     <div class="kpis" id="kp">${["Students", "Tests taken", "Questions", "Revenue"].map(t => `<div><b>–</b><span>${t}</span></div>`).join("")}</div>
     <div id="req"></div>
     <div class="sec-h"><h2>Quick Actions</h2></div>
@@ -1695,8 +1769,15 @@ async function teacherDash(bar) {
       <button data-go="narex"><span class="qi q-navy">${svg("spark")}</span>NareX AI</button>
       <button data-go="allStudents"><span class="qi q-teal">${svg("chart")}</span>Reports</button>
     </div>
-    <div class="sec-h"><h2>Weekly Toppers</h2><span>Last week</span></div>
-    <div class="list" id="toppers"><div class="spin"></div></div>
+    <section class="nxcard">
+      <div class="nx-ic">${svg("spark")}</div>
+      <div class="nx-b"><h3>NareX AI ✨</h3><p>Your AI Teaching Assistant</p>
+        <ul><li>Generate Questions</li><li>Create Worksheets</li><li>Create Test Papers</li><li>Make MCQs</li><li>Explain Solutions</li><li>Get Study Content</li></ul>
+        <button class="btn btn-gold" id="nxTry">Try Now →</button></div>
+    </section>
+    <div class="sec-h"><h2><span class="sh-ic">${svg("trophy")}</span>Weekly Toppers</h2><span id="tpW">Last week</span></div>
+    <div class="top3" id="top3"><div class="spin"></div></div>
+    <details class="bycls"><summary>Toppers by class &amp; medium</summary><div class="list" id="toppers"></div></details>
     <div class="sec-h"><h2>My Batches</h2><button class="link" data-go="st">View all →</button></div>
     <div class="list" id="batches"><div class="spin"></div></div>
     <div class="card"><div class="sec-h"><h2 style="font-size:17px">Student Growth</h2><span>Last 30 days</span></div><div id="growth"><div class="spin"></div></div></div>
@@ -1708,7 +1789,9 @@ async function teacherDash(bar) {
     <div class="list" id="act"><div class="spin"></div></div>
   </div></main>`;
   const $ = id => document.getElementById(id);
-  $("nxb").onclick = () => go("narex");
+  $("nxTry").onclick = () => go("narex");
+  $("ana").onclick = () => { const g = $("growth"); if (g) g.scrollIntoView({ behavior: "smooth", block: "center" }); };
+  $("tbell").onclick = () => { TTAB = "pay"; resetTo("teacher", { sec: "more" }); };
   $app.querySelectorAll("[data-go]").forEach(b => b.onclick = () => {
     const [sec, sub] = b.dataset.go.split(":");
     if (sec === "narex" || sec === "allStudents") return go(sec);
@@ -1725,9 +1808,14 @@ async function teacherDash(bar) {
   if (!$("kp")) return;
   const paid = purchases.filter(x => x.status === "approved"), revenue = paid.reduce((a, x) => a + (x.price || 0), 0);
   const active = users.filter(x => x.status !== "pending");
-  $("kp").innerHTML = `<div class="k-blue"><span class="ki">${svg("user")}</span><b>${active.length}</b><span>Students</span></div><div class="k-green"><span class="ki">${svg("test")}</span><b>${results.length}${results.length >= 500 ? "+" : ""}</b><span>Tests taken</span></div><div class="k-orange"><span class="ki">${svg("book")}</span><b>${qCount}</b><span>Questions</span></div><div class="k-purple"><span class="ki">${svg("rupee")}</span><b>₹${revenue}</b><span>Revenue</span></div>`;
+  const wk = weekStart(0);
+  const dS = active.filter(x => toMs(x.createdAt) >= wk).length, dT = results.filter(r => r.atMs >= wk).length;
+  const dR = paid.filter(x => (x.approvedAtMs || x.atMs) >= wk).reduce((a, x) => a + (x.price || 0), 0);
+  const dl = (n, pre = "+") => `<em><span class="up">↗</span> ${pre}${n} this week</em>`;
+  $("kp").innerHTML = `<div class="k-blue"><span class="ki">${svg("user")}</span><span>Students</span><b>${active.length}</b>${dl(dS)}</div><div class="k-green"><span class="ki">${svg("test")}</span><span>Tests taken</span><b>${results.length}${results.length >= 500 ? "+" : ""}</b>${dl(dT)}</div><div class="k-orange"><span class="ki">${svg("book")}</span><span>Questions</span><b>${qCount}</b><em>In question bank</em></div><div class="k-purple"><span class="ki">${svg("rupee")}</span><span>Revenue</span><b>₹${revenue}</b>${dl(dR, "+₹")}</div>`;
   // pending requests (old sign-ups) and payments needing action
   const pend = users.filter(x => x.status === "pending").length, pp = purchases.filter(x => x.status === "pending").length;
+  { const b = $("tbdot"); if (b && (pend + pp)) { b.hidden = false; b.textContent = pend + pp; } }
   if (pend || pp) $("req").innerHTML = `<button class="banner live" id="todo"><div class="ic">!</div><div style="flex:1"><h3>Needs your attention</h3><p>${[pend ? `${pend} student request${pend > 1 ? "s" : ""}` : "", pp ? `${pp} payment${pp > 1 ? "s" : ""} to approve` : ""].filter(Boolean).join(" · ")}</p></div></button>`;
   const todo = $("todo"); if (todo) todo.onclick = () => { if (pp && !pend) { TTAB = "pay"; resetTo("teacher", { sec: "more" }); } else resetTo("teacher", { sec: "st" }); };
   // batches = classes
@@ -1748,6 +1836,12 @@ async function teacherDash(bar) {
       const lastT = topperOf(rs, lastW, thisW), t = lastT || topperOf(rs, thisW, thisW + 7 * 864e5);
       if (t) rows.push({ c, m, t, live: !lastT });
     }));
+    // overall top 3 (last week; this week so far if last week had no tests)
+    const all3 = (from, to) => { const by = {}; results.filter(r => r.atMs >= from && r.atMs < to && !(r.endMs && r.endMs > Date.now())).forEach(r => { const u = by[r.uid] || (by[r.uid] = { uid: r.uid, name: r.name, cls: r.studentCls, n: 0, sum: 0 }); u.n++; u.sum += Math.max(0, r.score) / r.max; });
+      return Object.values(by).map(u => ({ ...u, pct: Math.round(u.sum / u.n * 100) })).sort((a, b) => b.pct - a.pct || b.n - a.n).slice(0, 3); };
+    let t3 = all3(lastW, thisW); if (!t3.length) { t3 = all3(thisW, thisW + 7 * 864e5); $("tpW").textContent = "This week"; }
+    $("top3").innerHTML = t3.length ? t3.map((u, i) => `<div class="t3 r${i + 1}"><span class="crown">${i + 1}</span><div class="t3-av">${esc(initials(u.name))}</div><b>${esc(u.name)}</b><p><strong>${u.pct}</strong>/100</p><small>Class ${u.cls} · ${u.n} test${u.n > 1 ? "s" : ""}</small></div>`).join("")
+      : `<div class="empty"><h3>No toppers yet</h3><p>Toppers appear once students take tests.</p></div>`;
     $("toppers").innerHTML = rows.length ? rows.map(x => `<div class="item"><div class="av r1">${x.c}</div><div class="mid"><b>${esc(x.t.name)}</b><span>Class ${x.c} · ${x.m} · ${x.t.n} test${x.t.n > 1 ? "s" : ""}${x.live ? " · this week so far" : ""}</span></div><div class="end">${x.t.pct}%</div></div>`).join("")
       : `<div class="empty"><h3>No toppers yet</h3><p>Toppers appear once students take tests.</p></div>`;
   }
