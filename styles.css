@@ -374,3 +374,16 @@ img{-webkit-user-drag:none}
 /* coming soon on course tiles */
 .tile .soon-chip{position:absolute;top:10px;right:10px;font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;background:rgba(0,0,0,.28);color:#fff;border-radius:999px;padding:2px 8px}
 .t-gold .soon-chip{background:rgba(74,54,0,.18);color:#4a3600}
+
+/* ===== always a phone layout: on wide screens the app sits in a centred phone-width column ===== */
+@media (min-width: 560px) {
+  html { background: #dfe4f0; }
+  body { max-width: 480px; margin: 0 auto; min-height: 100vh; box-shadow: 0 0 0 1px var(--line), 0 20px 60px rgba(15,42,107,.18); background: var(--bg); }
+  .in { max-width: 480px; }
+  .nav, .composer, .tbar, .appbar, .top { max-width: 480px; margin-left: auto; margin-right: auto; }
+  .nav, .composer { left: 0; right: 0; width: 100%; }
+  .toast { max-width: 440px; }
+  .install { right: calc(50% - 240px + 16px); }
+  .iostip { left: calc(50% - 240px + 12px); right: calc(50% - 240px + 12px); }
+  body::before { left: calc(50% - 240px); right: calc(50% - 240px); }
+}

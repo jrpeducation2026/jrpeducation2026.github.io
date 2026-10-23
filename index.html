@@ -13,6 +13,21 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Mukta:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="styles.css">
+<script>
+// Always show the phone layout. If Chrome's "Desktop site" is on, a phone gets a ~980px wide page;
+// scale it back up so the app looks the same as normal mobile view.
+(function () {
+  function fit() {
+    var de = document.documentElement, sw = Math.min(screen.width, screen.height);
+    de.style.zoom = "";
+    var touch = window.matchMedia && matchMedia("(pointer: coarse)").matches;
+    var iw = window.innerWidth;
+    if (touch && sw && iw > sw * 1.2) de.style.zoom = (iw / sw).toFixed(3);
+  }
+  fit();
+  window.addEventListener("resize", function () { clearTimeout(window.__fitT); window.__fitT = setTimeout(fit, 150); });
+})();
+</script>
 </head>
 <body>
 <div id="app"><div class="loading"><div><div class="spin"></div>Loading…</div></div></div>
