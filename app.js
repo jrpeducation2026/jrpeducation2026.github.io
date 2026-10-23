@@ -136,7 +136,7 @@ const testKey = (c, s, ch) => `${c}|${s}|${ch}`;
 const fmtTime = s => { s = Math.max(0, Math.round(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
 const initials = n => String(n || "?").trim().split(/\s+/).map(x => x[0]).join("").slice(0, 2).toUpperCase();
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-const fmtDate = ms => ms ? new Date(ms).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+const fmtDate = ms => { if (!ms) return ""; const d = new Date(ms); return d.toLocaleDateString("en-IN", d.getFullYear() === new Date().getFullYear() ? { day: "numeric", month: "short" } : { day: "numeric", month: "short", year: "numeric" }); };
 const usernameToEmail = u => u.includes("@") ? u.trim().toLowerCase() : `${u.trim().toLowerCase()}@${STUDENT_DOMAIN}`;
 let toastT;
 function toast(m) { const t = document.getElementById("toast"); t.textContent = m; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2200); }
@@ -398,7 +398,7 @@ VIEWS.signup = () => {
       <div class="field"><label for="a6">School (optional)</label><input id="a6" type="text"></div>
       <h2 style="font-size:20px;margin-top:6px">Login details</h2>
       <div class="field"><label for="a7">Username</label><input id="a7" type="text" autocapitalize="none" autocomplete="username" placeholder="Letters and numbers, e.g. rahul10"></div>
-      <div class="two"><div class="field"><label for="a8">Password</label><input id="a8" type="password" autocomplete="new-password" placeholder="Min 6 characters"></div>
+      <div class="two"><div class="field"><label for="a8">Password</label><input id="a8" type="password" autocomplete="new-password" placeholder="6+ letters"></div>
       <div class="field"><label for="a9">Confirm</label><input id="a9" type="password" autocomplete="new-password"></div></div>
       <div class="err" id="err" hidden></div>
       <button class="btn btn-navy" type="submit" id="go">Create account</button>
@@ -732,7 +732,7 @@ function dailyStreak() {
 }
 VIEWS.daily = async () => {
   const cls = Number(S.profile.cls), med = myMed();
-  $app.innerHTML = header("Daily Maths Challenge", today(), true) + `<main><div class="in" id="in"><div class="spin"></div></div></main>`;
+  $app.innerHTML = header("Daily Challenge", new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short" }), true) + `<main><div class="in" id="in"><div class="spin"></div></div></main>`;
   const box = document.getElementById("in");
   let q = null;
   const cacheK = dKey("q-" + today());
@@ -781,7 +781,7 @@ VIEWS.practice = async () => {
   wireMock();
   const mine = await loadMyResults().catch(() => []);
   const wrong = [...new Set(mine.flatMap(r => r.wrongIds || []))];
-  if ($("mN")) $("mN").textContent = wrong.length ? `${wrong.length} questions to revise` : "No mistakes saved yet. Take a chapter test first.";
+  if ($("mN")) $("mN").textContent = wrong.length ? `${wrong.length} question${wrong.length > 1 ? "s" : ""} to revise` : "No mistakes saved yet. Take a chapter test first.";
   $("mist").onclick = () => wrong.length ? go("ptest", { mode: "mistakes" }) : toast("Take a chapter test first.");
   $("quick").onclick = () => go("ptest", { mode: "quick" });
 };
@@ -1663,7 +1663,7 @@ function drawBoard(el, rs, key, meUid) {
 }
 VIEWS.board = async () => {
   const c = Number(S.profile.cls);
-  $app.innerHTML = header("Leaderboard", `Class ${c} · ${myMed()} medium`) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
+  $app.innerHTML = header("Leaderboard", `Class ${c} · ${myMed()} medium`, true) + `<main><div class="in" id="in"><div class="loading" style="min-height:30vh"><div class="spin"></div></div></div></main>`;
   let rs = [];
   try { rs = (await getDocs(query(collection(db, "results"), where("studentCls", "==", c)))).docs.map(d => d.data()).filter(r => (!r.endMs || r.endMs <= Date.now()) && (r.studentMedium || "English") === myMed()); }
   catch (e) { document.getElementById("in").innerHTML = `<div class="err">${esc(errText(e))}</div>`; return; }
@@ -1710,7 +1710,7 @@ VIEWS.teacher = async ({ sec = "dash", sub } = {}) => {
   else { const list = TSECS[sec]; if (!list.some(x => x[0] === TTAB)) TTAB = sub || list[0][0]; }
   const tabs = TSECS[sec] ? `<div class="tabs" role="tablist">${TSECS[sec].map(([k, t]) => `<button class="tb" data-t="${k}">${t}</button>`).join("")}</div>` : "";
   $app.innerHTML = bar + `<main><div class="in">
-    ${sec === "st" ? `<div class="sec-h"><h2>Students</h2><button class="link" id="allD">All details →</button></div>` : ""}
+    ${sec === "st" ? `<div class="sec-h"><h2>Students</h2></div>` : ""}
     ${tabs}
     <div id="pane"></div>
     ${sec === "more" ? `<button class="pcard" id="out"><span class="qi q-red">${svg("logout")}</span><span class="pc-t"><b>Log out</b><small>Teacher account</small></span></button>` : ""}
@@ -1825,7 +1825,7 @@ async function teacherDash(bar) {
   byCls.forEach(({ c, list }) => {
     const en = list.filter(x => medOf(x) === "English").length, hi = list.length - en;
     const b = document.createElement("button"); b.className = "item batch";
-    b.innerHTML = `<div class="av bt">${c}</div><div class="mid"><b>Class ${c}${c === 10 || c === 12 ? " · RBSE Board" : ""}</b><span>${list.length} students · English ${en} · Hindi ${hi}</span></div><div class="end"><small>View →</small></div>`;
+    b.innerHTML = `<div class="av bt">${c}</div><div class="mid"><b>Class ${c}${c === 10 || c === 12 ? " · RBSE Board" : ""}</b><span>${list.length} student${list.length > 1 ? "s" : ""} · English ${en} · Hindi ${hi}</span></div><div class="end"><small>View →</small></div>`;
     b.onclick = () => { TFILTER = String(c); TOPEN = false; resetTo("teacher", { sec: "st" }); };
     bt.appendChild(b);
   });
@@ -1875,7 +1875,7 @@ async function tabStudents(pane) {
       <h3 style="font-size:18px">New student</h3>
       <div class="field"><label for="sn">Full name</label><input id="sn" type="text" placeholder="Student name"></div>
       <div class="two"><div class="field"><label for="sc">Class</label><select id="sc">${classOptions(10)}</select></div>
-      <div class="field"><label for="sm">Mobile</label><input id="sm" type="tel" inputmode="numeric" placeholder="10-digit number"></div></div>
+      <div class="field"><label for="sm">Mobile</label><input id="sm" type="tel" inputmode="numeric" placeholder="Mobile no."></div></div>
       <div class="field"><label for="smd">Medium</label><select id="smd">${medOptions("English")}</select></div>
       <div class="field"><label for="sf">Father's name</label><input id="sf" type="text"></div>
       <div class="field"><label for="ss">School (optional)</label><input id="ss" type="text"></div>
@@ -1885,7 +1885,7 @@ async function tabStudents(pane) {
       <button class="btn btn-navy" type="submit" id="save">Save student</button>
     </form>
     <div class="ok-msg" id="done" hidden></div>
-    <div class="filters"><div class="field"><label for="fc">Class</label><select id="fc">${classOptions("", true)}</select></div><div class="field"><label for="fq">Search</label><input id="fq" type="search" placeholder="Name or username"></div></div>
+    <div class="filters"><div class="field"><label for="fc">Class</label><select id="fc">${classOptions("", true)}</select></div><div class="field"><label for="fq">Search</label><input id="fq" type="search" placeholder="Search name"></div></div>
     <div class="list" id="l"></div></div>`;
   const $ = id => document.getElementById(id);
   $("add").onclick = () => { $("f").hidden = !$("f").hidden; };
@@ -2002,7 +2002,7 @@ async function studentDetail(d, s, reload) {
 
 async function tabResults(pane) {
   pane.innerHTML = `<div style="display:flex;flex-direction:column;gap:12px">
-    <div class="filters"><div class="field"><label for="rc">Class</label><select id="rc">${classOptions("", true)}</select></div><div class="field"><label for="rq">Search</label><input id="rq" type="search" placeholder="Student or chapter"></div></div>
+    <div class="filters"><div class="field"><label for="rc">Class</label><select id="rc">${classOptions("", true)}</select></div><div class="field"><label for="rq">Search</label><input id="rq" type="search" placeholder="Search"></div></div>
     <div class="list" id="l"></div></div>`;
   let all = [];
   try { all = (await getDocs(query(collection(db, "results"), orderBy("atMs", "desc"), limit(500)))).docs.map(d => d.data()); }

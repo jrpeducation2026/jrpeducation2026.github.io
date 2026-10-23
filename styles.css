@@ -579,3 +579,24 @@ main.reader{touch-action:pan-x pan-y pinch-zoom}
 .sc small,.kpis>div>span:not(.ki){font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:end}
 .sc b,.kpis b{font-size:22px;justify-self:start;align-self:start}
 .sc em,.kpis em{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:6px}
+/* ===== QA fixes ===== */
+/* stat cards always 2 per row (app is phone-width everywhere) */
+@media (min-width:700px){.scards,.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* header: show student name & full tagline on small phones too */
+.ab-t b{font-size:clamp(14px,4.3vw,17px)}
+@media (max-width:380px){.ab-ct{display:flex}.ab-t small{display:block}.ab-ct b{max-width:46px}.ab-ct small{font-size:10px}.ab-chip{max-width:104px}.ab-logo{width:34px;height:34px}}
+@media (max-width:340px){.ab-ct{display:none}}
+/* sub-page header subtitle on one line */
+.top small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* My Learning tile: keep "14 Chapters ›" on one line */
+.ml-t small{white-space:nowrap}
+.ml-t b{font-size:12.5px}
+/* classes grid 4 per row (no lonely last tile) */
+.classes{grid-template-columns:repeat(4,1fr)}
+.cls b{font-size:28px}
+/* status chips never stretch into blobs */
+.chip{align-self:flex-start;flex:none}
+/* syllabus overview: wrap long chapter names */
+#ov .tbl td:nth-child(2){white-space:normal;min-width:150px}
+/* small phones: chip shows just the avatar so the full tagline fits */
+@media (max-width:400px){.ab-ct{display:none!important}.ab-chip{padding:2px 4px 2px 2px}.ab-t small{display:block;font-size:10px}}
