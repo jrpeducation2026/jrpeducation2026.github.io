@@ -497,7 +497,7 @@ const svg = k => `<svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>`;
 function appbar(right = "") {
   const chev = `<svg class="chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>`;
   let chip = "";
-  if (S.admin) chip = `<button class="ab-chip" data-tchip aria-label="Teacher menu"><span class="ab-av t">${svg("board")}</span><span class="ab-ct"><b>Teacher</b><small>JRP Admin</small></span>${chev}</button>`;
+  if (S.admin) chip = `<button class="ab-chip" data-tchip aria-label="Teacher menu"><span class="ab-av t">${svg("board")}</span><span class="ab-ct"><b>Teacher</b></span>${chev}</button>`;
   else if (S.profile) chip = `<button class="ab-chip" data-menu aria-label="Menu"><span class="ab-av">${esc(initials(S.profile.name))}</span><span class="ab-ct"><b>${esc((S.profile.name || "").split(" ")[0])}</b><small>Class ${esc(S.profile.cls)}</small></span>${chev}</button>`;
   return `<header class="appbar"><div class="in"><img src="${LOGO}" alt="" class="ab-logo"><div class="ab-t"><b>JRP EDUCATION</b><small>Think · Learn · Grow · Succeed</small></div>${right}${chip}</div></header>`;
 }
