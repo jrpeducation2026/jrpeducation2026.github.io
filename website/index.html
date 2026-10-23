@@ -124,7 +124,9 @@ button{font:inherit;cursor:pointer;color:inherit}
 /* 3 maths sections */
 .clean{font-family:"Montserrat",var(--f-body);font-weight:600;font-size:clamp(30px,8.4vw,72px);line-height:1.08;letter-spacing:-.01em}
 .clean em{font-style:normal;font-weight:500;background:linear-gradient(100deg,var(--gold-2),var(--gold) 45%,var(--ember));-webkit-background-clip:text;background-clip:text;color:transparent}
-.msec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.msec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.msec div:last-child:nth-child(odd){grid-column:1/-1}
+@media (max-height:760px){.msec div{padding:10px 12px}.msec span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}}
 .msec div{position:relative;background:rgba(10,8,18,.72);border:1px solid var(--line);border-radius:14px;padding:clamp(12px,2vh,18px) 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
 .msec i{font-family:"Montserrat",var(--f-body);font-style:normal;font-weight:600;font-size:13px;letter-spacing:.12em;color:var(--gold)}
 .msec b{font-family:"Montserrat",var(--f-body);font-weight:600;font-size:clamp(17px,4.6vw,22px);line-height:1.15}
@@ -251,7 +253,8 @@ button{font:inherit;cursor:pointer;color:inherit}
         <div><i>01</i><b>RBSE Maths</b><span>Rajasthan Board, Class 6 to 12. Chapter tests, notes and board-pattern practice.</span></div>
         <div><i>02</i><b>CBSE Maths</b><span>NCERT-based Maths for Class 6 to 12 with chapter-wise tests and solutions.</span></div>
         <div><i>03</i><b>Vedic Maths</b><span>Fast calculation tricks to solve sums in seconds.</span><small>Coming soon</small></div>
-        <div><i>04</i><b>Advance Maths</b><span>Olympiad and competitive-level problems for sharp minds.</span><small>Coming soon</small></div>
+        <div><i>04</i><b>Advance Maths</b><span>Higher-level problems and deeper concepts for sharp minds.</span><small>Coming soon</small></div>
+        <div><i>05</i><b>Olympiad Maths</b><span>Puzzles, reasoning and Olympiad-pattern problems to prepare for Maths Olympiads.</span><small>Coming soon</small></div>
       </div>
     </div>
   </section>
