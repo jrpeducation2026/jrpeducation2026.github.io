@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1200">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#050b2e"/><stop offset=".5" stop-color="#14306e"/><stop offset=".8" stop-color="#2f6fe0"/><stop offset="1" stop-color="#6fd3ff"/></linearGradient>
+<radialGradient id="spot" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#bfe8ff" stop-opacity=".75"/><stop offset="1" stop-color="#bfe8ff" stop-opacity="0"/></radialGradient>
+<linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff1a8"/><stop offset=".5" stop-color="#f5b623"/><stop offset="1" stop-color="#a86d05"/></linearGradient>
+<linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#bfe8ff" stop-opacity=".45"/><stop offset="1" stop-color="#bfe8ff" stop-opacity="0"/></linearGradient>
+</defs>
+<rect width="900" height="1200" fill="url(#sky)"/>
+<path d="M120 0l200 1200H0z" fill="url(#beam)" opacity=".5"/><path d="M780 0l120 1200H560z" fill="url(#beam)" opacity=".5"/>
+<circle cx="450" cy="560" r="360" fill="url(#spot)"/>
+<!-- stars -->
+<g fill="#fff"><circle cx="80" cy="90" r="3"/><circle cx="210" cy="180" r="2"/><circle cx="350" cy="70" r="3"/><circle cx="600" cy="120" r="2"/><circle cx="760" cy="60" r="3"/><circle cx="840" cy="230" r="2"/><circle cx="60" cy="330" r="2"/><circle cx="820" cy="420" r="3"/></g>
+<g fill="#ffe08a"><path d="M150 260l10 24 26 2-20 17 6 25-22-14-22 14 6-25-20-17 26-2z"/><path d="M740 300l8 18 20 2-15 13 5 19-18-11-17 11 5-19-15-13 20-2z"/></g>
+<!-- ribbon -->
+<path d="M330 110l120 300 120-300z" fill="#e2483d"/><path d="M330 110h80l90 230-50 70z" fill="#2f6fe0"/><path d="M570 110h-80l-90 230 50 70z" fill="#1b4bb0"/>
+<!-- medal -->
+<g transform="translate(450 600)">
+<circle r="210" fill="url(#gold)"/><circle r="210" fill="none" stroke="#7a4d02" stroke-width="8"/>
+<circle r="160" fill="#ffd451"/><circle r="160" fill="none" stroke="#c98a0a" stroke-width="6" stroke-dasharray="4 10"/>
+<path d="M0-110l30 64 70 8-52 48 15 70L0 45l-63 35 15-70-52-48 70-8z" fill="#c98a0a"/>
+<path d="M-140-110a180 180 0 0 1 120-80" stroke="#fff" stroke-width="12" stroke-linecap="round" fill="none" opacity=".55"/>
+</g>
+<!-- podium -->
+<g><rect x="90" y="930" width="240" height="270" fill="#0d1d4f"/><rect x="330" y="860" width="240" height="340" fill="#122a6b"/><rect x="570" y="980" width="240" height="220" fill="#0d1d4f"/>
+<g font-family="Anton,Impact,sans-serif" font-size="110" fill="#6fd3ff" text-anchor="middle" opacity=".9"><text x="210" y="1080">2</text><text x="450" y="1010" fill="#ffd451">1</text><text x="690" y="1120">3</text></g></g>
+<!-- puzzle & symbols -->
+<g transform="translate(110 520) rotate(-14)"><path d="M0 0h50a20 20 0 1 1 40 0h50v50a20 20 0 1 0 0 40v50H0z" fill="#6fd3ff" opacity=".9"/></g>
+<g font-family="Georgia,serif" font-weight="700" fill="#fff" text-anchor="middle"><text x="770" y="620" font-size="96">π</text><text x="130" y="800" font-size="70" fill="#ffe08a">?</text><text x="790" y="820" font-size="60" opacity=".8">∞</text></g>
+</svg>
