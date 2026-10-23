@@ -524,10 +524,49 @@ async function learningProgress(cls) {
   return { done, total: chs.length, pct: chs.length ? Math.round(done / chs.length * 100) : 0 };
 }
 
+/* ----- Weekly Topper: best average % in a class (and medium) for a Monday–Sunday week ----- */
+function weekStart(offsetWeeks = 0) {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const day = (d.getDay() + 6) % 7; // Monday = 0
+  d.setDate(d.getDate() - day + offsetWeeks * 7);
+  return d.getTime();
+}
+function topperOf(rs, from, to) {
+  const by = {};
+  rs.filter(r => r.atMs >= from && r.atMs < to && !(r.endMs && r.endMs > Date.now())).forEach(r => {
+    const u = by[r.uid] || (by[r.uid] = { uid: r.uid, name: r.name, n: 0, sum: 0, score: 0 });
+    u.n++; u.sum += Math.max(0, r.score) / r.max; u.score += Math.max(0, r.score);
+  });
+  const list = Object.values(by).map(u => ({ ...u, pct: Math.round(u.sum / u.n * 100) }))
+    .sort((a, b) => b.pct - a.pct || b.n - a.n || b.score - a.score);
+  return list[0] || null;
+}
+async function weeklyToppers(cls, med) {
+  const snap = await getDocs(query(collection(db, "results"), where("studentCls", "==", Number(cls))));
+  const rs = snap.docs.map(d => d.data()).filter(r => !med || (r.studentMedium || "English") === med);
+  const thisW = weekStart(0), lastW = weekStart(-1);
+  return { last: topperOf(rs, lastW, thisW), now: topperOf(rs, thisW, thisW + 7 * 864e5) };
+}
+async function fillTopper(box) {
+  const p = S.profile; if (!box || !p) return;
+  let t; try { t = await weeklyToppers(p.cls, myMed()); } catch (e) { return; }
+  const top = t.last || t.now; if (!top || !box.isConnected) return;
+  const me = top.uid === S.user.uid, live = !t.last;
+  box.innerHTML = `<div class="topper${me ? " me" : ""}">
+    <div class="tp-medal">${svg("trophy")}</div>
+    <div class="tp-t"><small>Congratulations 🎉</small>
+      <b>${esc(top.name)}</b>
+      <span>${live ? "Leading this week" : "Weekly Topper"} · Class ${esc(p.cls)} · ${top.pct}% avg · ${top.n} test${top.n > 1 ? "s" : ""}</span>
+      ${me ? `<em>${live ? "You are on top this week. Keep going!" : "You are last week's topper!"}</em>` : ""}</div>
+    <span class="tp-conf" aria-hidden="true"></span></div>`;
+  box.hidden = false;
+}
+
 VIEWS.home = () => {
   const p = S.profile, cls = Number(p.cls), first = (p.name || "").split(" ")[0];
   $app.innerHTML = appbar(`<button class="ab-bell" id="bell" aria-label="Notices">${svg("bell")}<i id="bdot" hidden></i></button>`) + `
   <main><div class="in">
+    <div id="topper" hidden></div>
     <button class="promo" id="promo" data-book="${BOOKS[0].id}">
       <img src="${BOOKS[0].cover}" alt="" class="pm-cover">
       <span class="pm-t"><span class="pm-tag">${BOOKS[0].demo ? "Demo Book · Try at ₹9" : "New · Formula Book"}</span><b>${esc(BOOKS[0].title)}</b><small>${esc(BOOKS[0].sub)}</small>
@@ -554,6 +593,7 @@ VIEWS.home = () => {
   </div></main>`;
   const $ = id => document.getElementById(id);
   courseTiles($("tiles"), cls);
+  fillTopper($("topper"));
   $("promo").onclick = () => go("book", { id: BOOKS[0].id });
   myPurchase(BOOKS[0]).then(pur => {
     const c = $("pmCta"); if (!c || !pur) return;
@@ -1627,6 +1667,8 @@ async function teacherDash(bar) {
       <button data-go="narex"><span class="qi q-navy">${svg("spark")}</span>NareX AI</button>
       <button data-go="allStudents"><span class="qi q-teal">${svg("chart")}</span>Reports</button>
     </div>
+    <div class="sec-h"><h2>Weekly Toppers</h2><span>Last week</span></div>
+    <div class="list" id="toppers"><div class="spin"></div></div>
     <div class="sec-h"><h2>My Batches</h2><button class="link" data-go="st">View all →</button></div>
     <div class="list" id="batches"><div class="spin"></div></div>
     <div class="card"><div class="sec-h"><h2 style="font-size:17px">Student Growth</h2><span>Last 30 days</span></div><div id="growth"><div class="spin"></div></div></div>
@@ -1671,6 +1713,16 @@ async function teacherDash(bar) {
     b.onclick = () => { TFILTER = String(c); TOPEN = false; resetTo("teacher", { sec: "st" }); };
     bt.appendChild(b);
   });
+  {
+    const thisW = weekStart(0), lastW = weekStart(-1), rows = [];
+    CLASSES.forEach(c => MEDIUMS.forEach(m => {
+      const rs = results.filter(r => Number(r.studentCls) === c && (r.studentMedium || "English") === m);
+      const lastT = topperOf(rs, lastW, thisW), t = lastT || topperOf(rs, thisW, thisW + 7 * 864e5);
+      if (t) rows.push({ c, m, t, live: !lastT });
+    }));
+    $("toppers").innerHTML = rows.length ? rows.map(x => `<div class="item"><div class="av r1">${x.c}</div><div class="mid"><b>${esc(x.t.name)}</b><span>Class ${x.c} · ${x.m} · ${x.t.n} test${x.t.n > 1 ? "s" : ""}${x.live ? " · this week so far" : ""}</span></div><div class="end">${x.t.pct}%</div></div>`).join("")
+      : `<div class="empty"><h3>No toppers yet</h3><p>Toppers appear once students take tests.</p></div>`;
+  }
   $("growth").innerHTML = growthChart(active.map(x => toMs(x.createdAt)).filter(Boolean));
   const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
   const monthRev = paid.filter(x => (x.approvedAtMs || x.atMs) >= m0.getTime()).reduce((a, x) => a + (x.price || 0), 0);
