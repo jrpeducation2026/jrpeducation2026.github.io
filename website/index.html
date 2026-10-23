@@ -4,308 +4,365 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>JRP Education · Jaipur</title>
-<meta name="description" content="JRP Education, Jaipur: Maths for Class 6 to 12 in Hindi and English medium. Tests, test series, AI doubt solver NareX and the JRP Maths Concepts formula book.">
-<meta name="theme-color" content="#0b1a45">
+<meta name="description" content="JRP Education, Jaipur: Maths for Class 6 to 12 in Hindi and English medium. Tests, test series, AI guide NareX and the JRP Maths Concepts formula book.">
+<meta name="theme-color" content="#050505">
 <link rel="icon" type="image/png" href="../icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Mukta:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Mukta:wght@400;500;700;800&display=swap">
 <style>
-/* Layout: full-screen frames that snap one by one on swipe; navy stage with gold spotlights, one bold idea per frame. */
+/* Layout: cinematic full-screen frames. One frame on screen at a time; a swipe up plays a reveal into the next.
+   Without JS the frames simply stack and scroll. */
 :root{
-  --night:#0b1a45; --navy:#0f2a6b; --royal:#1f4fb6; --gold:#f2b21b; --gold-2:#ffd45a; --flame:#ff7a2f;
-  --ink:#0e1c40; --paper:#ffffff; --mist:#c9d4f2; --muted:#8fa0cf; --line:rgba(255,255,255,.14);
-  --f-display:"Baloo 2","Mukta",system-ui,sans-serif; --f-body:"Mukta","Noto Sans Devanagari",system-ui,sans-serif;
-  color-scheme:dark;
+  --black:#050505; --coal:#111114; --gold:#f5b623; --gold-2:#ffd86b; --ember:#ff6a2b; --rose:#e8467c; --violet:#6a3df0; --navy:#0f2a6b;
+  --white:#f7f4ee; --mist:#b9b4ab; --line:rgba(255,255,255,.14);
+  --f-display:"Anton","Impact","Arial Narrow",sans-serif; --f-body:"Mukta","Noto Sans Devanagari",system-ui,sans-serif;
+  --ease:cubic-bezier(.77,0,.18,1); color-scheme:dark;
 }
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--night);color:#fff;font-family:var(--f-body);-webkit-tap-highlight-color:transparent}
-body{overflow:hidden}
-h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.05;text-wrap:balance}
+html,body{margin:0;background:var(--black);color:var(--white);font-family:var(--f-body);-webkit-tap-highlight-color:transparent}
+h1,h2,h3{margin:0;font-weight:400}
 p{margin:0}
 a{color:inherit}
 button{font:inherit;cursor:pointer;color:inherit}
 :focus-visible{outline:3px solid var(--gold);outline-offset:3px}
-
-/* frames */
-.deck{height:100%;overflow-y:auto;scroll-snap-type:y mandatory;scroll-behavior:smooth;overscroll-behavior:contain}
-.frame{position:relative;min-height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;align-items:center;overflow:hidden;
-  padding-top:calc(env(safe-area-inset-top,0px) + 64px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 56px)}
-.wrap{width:100%;max-width:980px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(44px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:18px;position:relative;z-index:2}
-.frame::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none}
-.f-hero::before{background:radial-gradient(60% 45% at 50% 0%,rgba(242,178,27,.35),transparent 70%),radial-gradient(50% 40% at 0% 100%,rgba(31,79,182,.55),transparent 70%),radial-gradient(45% 35% at 100% 80%,rgba(255,122,47,.25),transparent 70%)}
-.f-blue::before{background:radial-gradient(55% 45% at 100% 0%,rgba(31,79,182,.6),transparent 70%),radial-gradient(40% 35% at 0% 100%,rgba(242,178,27,.18),transparent 70%)}
-.f-gold::before{background:radial-gradient(60% 50% at 50% 100%,rgba(242,178,27,.32),transparent 70%),radial-gradient(40% 40% at 0% 0%,rgba(122,63,176,.4),transparent 70%)}
-.f-flame::before{background:radial-gradient(55% 45% at 0% 0%,rgba(255,122,47,.32),transparent 70%),radial-gradient(45% 40% at 100% 100%,rgba(31,79,182,.5),transparent 70%)}
-
-/* top bar + dots */
-.top{position:fixed;inset:0 0 auto;z-index:20;padding-top:env(safe-area-inset-top,0px);background:linear-gradient(var(--night),rgba(11,26,69,0))}
-.top .in{max-width:980px;margin:0 auto;padding:10px max(20px,env(safe-area-inset-right,0px)) 10px max(20px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:10px}
-.top img{width:40px;height:40px;object-fit:contain;background:#fff;border-radius:50%;padding:3px}
-.top b{font-family:var(--f-display);font-size:18px;letter-spacing:.03em;flex:1}
-.pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:10px 18px;font-weight:700;text-decoration:none;border:0;font-size:15px;white-space:nowrap}
-.pill-gold{background:linear-gradient(135deg,var(--gold-2),var(--gold));color:var(--night);box-shadow:0 6px 22px rgba(242,178,27,.35)}
-.pill-ghost{background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--line)}
-.top .pill{padding:8px 14px;font-size:14px}
-.dots{position:fixed;right:max(12px,env(safe-area-inset-right,0px));top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;gap:10px}
-.dots button{width:10px;height:10px;border-radius:50%;border:0;padding:0;background:rgba(255,255,255,.28);transition:height .3s,background .3s}
-.dots button[aria-current="true"]{height:26px;border-radius:6px;background:var(--gold)}
-
-/* type */
-.eyebrow{font-size:13px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
-.big{font-size:clamp(44px,12vw,104px);font-weight:800;letter-spacing:-.01em}
-.big .g{background:linear-gradient(120deg,var(--gold-2),var(--gold) 45%,var(--flame));-webkit-background-clip:text;background-clip:text;color:transparent}
-.h2{font-size:clamp(34px,8vw,64px);font-weight:800}
-.lead{font-size:clamp(17px,4.4vw,21px);color:var(--mist);max-width:36em;line-height:1.5}
-.row{display:flex;gap:10px;flex-wrap:wrap}
-
-/* hero */
-.crest{width:120px;height:120px;border-radius:50%;background:#fff;padding:10px;box-shadow:0 0 0 4px var(--gold),0 0 60px rgba(242,178,27,.45)}
-.crest img{width:100%;height:100%;object-fit:contain}
-.tag{display:flex;gap:8px;flex-wrap:wrap}
-.tag span{font-size:13px;font-weight:700;border:1px solid var(--line);background:rgba(255,255,255,.06);border-radius:999px;padding:4px 12px;color:var(--mist)}
-.swipe{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);transform:translateX(-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);background:none;border:0}
-.swipe i{width:22px;height:34px;border:2px solid var(--muted);border-radius:12px;position:relative}
-.swipe i::after{content:"";position:absolute;left:50%;top:6px;width:4px;height:8px;margin-left:-2px;border-radius:2px;background:var(--gold);animation:sw 1.6s infinite}
-@keyframes sw{0%{opacity:0;transform:translateY(8px)}40%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
-
-/* cards */
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.card{background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:6px;min-width:0;backdrop-filter:blur(6px)}
-.card b{font-family:var(--f-display);font-size:20px;line-height:1.1}
-.card span{font-size:14px;color:var(--mist);line-height:1.4}
-.card .n{font-family:var(--f-display);font-size:38px;font-weight:800;line-height:1;color:var(--gold)}
-.ic{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;margin-bottom:4px}
-.ic svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.c1{background:#2f6fe4}.c2{background:#22a565}.c3{background:#fb8c2b}.c4{background:#8b5cf6}.c5{background:#e2483d}.c6{background:var(--gold);color:var(--night)}
-.classes{display:flex;gap:8px;flex-wrap:wrap}
-.classes span{font-family:var(--f-display);font-size:24px;font-weight:800;width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.07);border:1px solid var(--line)}
-.classes span.b{background:var(--gold);color:var(--night);border-color:var(--gold)}
-
-/* book */
-.book{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
-.book img{width:min(200px,46vw);border-radius:12px;transform:rotate(-5deg);box-shadow:0 20px 50px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.1)}
-.book .bt{flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px}
-.price{font-family:var(--f-display);font-weight:800;font-size:clamp(64px,16vw,110px);line-height:.9;color:var(--gold)}
-.price small{font-size:.32em;color:var(--mist);font-weight:600}
-.ticks{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:16px;color:var(--mist)}
-.ticks li::before{content:"✓";color:var(--gold);font-weight:800;margin-right:8px}
-
-/* NareX */
-.nx{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
-.nx-pic{position:relative;width:min(220px,52vw);aspect-ratio:1;max-width:100%}
-.nx-pic img{width:100%;height:100%;object-fit:cover;border-radius:28px;box-shadow:0 0 0 4px var(--gold),0 20px 60px rgba(0,0,0,.5)}
-.nx-pic::after{content:"AI";position:absolute;right:-10px;top:-10px;font-family:var(--f-display);font-weight:800;font-size:18px;background:linear-gradient(135deg,var(--flame),var(--gold));color:var(--night);border-radius:12px;padding:4px 10px;transform:rotate(8deg)}
-.nx .bt{flex:1;min-width:240px;display:flex;flex-direction:column;gap:12px}
-.bubble{background:#fff;color:var(--ink);border-radius:18px 18px 18px 4px;padding:12px 14px;font-size:16px;line-height:1.45;max-width:30em}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chips button{border:1px solid var(--line);background:rgba(255,255,255,.07);border-radius:999px;padding:7px 12px;font-size:14px;color:#fff}
-
-/* steps + contact */
-.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.steps .card b{font-size:17px}
-.steps .num{font-family:var(--f-display);font-weight:800;font-size:28px;color:var(--gold);line-height:1}
-.contact{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-.yt{display:flex;align-items:center;gap:14px;background:#fff;color:var(--ink);border-radius:18px;padding:14px 16px;text-decoration:none}
-.yt .y{width:52px;height:36px;border-radius:10px;background:#e62117;display:grid;place-items:center;flex:none}
-.yt .y svg{width:22px;height:22px;fill:#fff}
-.yt b{font-size:17px;display:block}.yt small{color:#5a6688}
-.foot{font-size:13px;color:var(--muted)}
-
-/* reveal animation (only when JS is running; content stays visible without it) */
-.js .rv{opacity:0;transform:translateY(34px) scale(.98);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
-.js .frame.in .rv{opacity:1;transform:none}
-.js .frame.in .rv:nth-child(2){transition-delay:.08s}.js .frame.in .rv:nth-child(3){transition-delay:.16s}
-.js .frame.in .rv:nth-child(4){transition-delay:.24s}.js .frame.in .rv:nth-child(5){transition-delay:.32s}.js .frame.in .rv:nth-child(6){transition-delay:.4s}
-.js .grid.rv>*,.js .steps.rv>*{opacity:0;transform:translateY(20px);transition:opacity .5s,transform .5s}
-.js .frame.in .grid.rv>*,.js .frame.in .steps.rv>*{opacity:1;transform:none}
-.js .frame.in .grid.rv>*:nth-child(2),.js .frame.in .steps.rv>*:nth-child(2){transition-delay:.3s}
-.js .frame.in .grid.rv>*:nth-child(3),.js .frame.in .steps.rv>*:nth-child(3){transition-delay:.4s}
-.js .frame.in .grid.rv>*:nth-child(4){transition-delay:.5s}.js .frame.in .grid.rv>*:nth-child(5){transition-delay:.6s}.js .frame.in .grid.rv>*:nth-child(6){transition-delay:.7s}
-.js .frame.in .book img{animation:drop .9s cubic-bezier(.2,.8,.2,1.2)}
-@keyframes drop{from{transform:rotate(-25deg) translateY(-60px) scale(.8);opacity:0}to{transform:rotate(-5deg)}}
-
-/* NareX chat sheet */
-.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 16px);z-index:25;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:6px 16px 6px 6px;background:linear-gradient(135deg,var(--gold-2),var(--gold));color:var(--night);font-weight:800;box-shadow:0 8px 26px rgba(242,178,27,.45)}
-.fab img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid #fff}
-.sheet{position:fixed;inset:0;z-index:40;background:rgba(5,12,34,.6);display:flex;align-items:flex-end;justify-content:center}
-.panel{width:100%;max-width:560px;height:min(88dvh,720px);background:#f3f5fb;color:var(--ink);border-radius:22px 22px 0 0;display:flex;flex-direction:column;overflow:hidden;animation:up .35s cubic-bezier(.2,.8,.2,1)}
-@keyframes up{from{transform:translateY(100%)}to{transform:none}}
-.ph{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--navy);color:#fff}
-.ph img{width:42px;height:42px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)}
-.ph div{flex:1;min-width:0}.ph b{font-family:var(--f-display);font-size:19px;display:block;line-height:1.1}.ph small{color:var(--mist);font-size:12px}
-.ph button{background:rgba(255,255,255,.12);border:0;border-radius:10px;width:38px;height:38px;color:#fff;font-size:18px}
-.msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-.m{max-width:86%;padding:10px 13px;border-radius:16px;font-size:16px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
-.m.bot{background:#fff;border:1px solid #dde3f1;border-bottom-left-radius:4px;align-self:flex-start}
-.m.me{background:var(--navy);color:#fff;border-bottom-right-radius:4px;align-self:flex-end}
-.qs{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 8px}
-.qs button{border:1px solid #dde3f1;background:#fff;border-radius:999px;padding:6px 11px;font-size:13px;color:var(--navy)}
-.compose{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));background:#fff;border-top:1px solid #dde3f1}
-.compose input{flex:1;min-width:0;font:inherit;font-size:16px;border:1.5px solid #dde3f1;border-radius:14px;padding:10px 12px;background:#f3f5fb;color:var(--ink)}
-.compose button{border:0;border-radius:14px;padding:0 16px;background:var(--navy);color:#fff;font-weight:700}
-.compose button:disabled{opacity:.5}
-.left{font-size:12px;color:#5a6688;text-align:center;padding:0 0 6px}
-.dotty{display:inline-flex;gap:4px}.dotty i{width:7px;height:7px;border-radius:50%;background:#8fa0cf;animation:bl 1s infinite}.dotty i:nth-child(2){animation-delay:.2s}.dotty i:nth-child(3){animation-delay:.4s}
-@keyframes bl{0%,100%{opacity:.25}50%{opacity:1}}
 [hidden]{display:none!important}
 
-@media (max-width:520px){.steps{grid-template-columns:1fr}.contact{grid-template-columns:1fr}.top .hide-s{display:none}}
-@media (prefers-reduced-motion:reduce){.deck{scroll-behavior:auto}.js .rv,.js .grid.rv>*,.js .steps.rv>*{opacity:1!important;transform:none!important;transition:none!important}.js .frame.in .book img{animation:none}.swipe i::after{animation:none}}
+/* ---------- frames ---------- */
+.frame{position:relative;min-height:100vh;min-height:100dvh;overflow:hidden;display:flex;align-items:center;isolation:isolate;
+  padding-top:calc(env(safe-area-inset-top,0px) + 70px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 70px)}
+.wrap{width:100%;max-width:1080px;margin:0 auto;padding-left:max(22px,env(safe-area-inset-left,0px));padding-right:max(22px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:clamp(10px,2.2vh,20px);position:relative;z-index:3}
+.bg{position:absolute;inset:-6%;z-index:0}
+.shade{position:absolute;inset:0;z-index:1;background:radial-gradient(120% 90% at 50% 40%,transparent 40%,rgba(0,0,0,.75) 100%)}
+.grain{position:fixed;inset:0;z-index:30;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* cinematic mode: fixed stage, JS swaps frames */
+.cine,.cine body{overscroll-behavior:none}
+.cine body{overflow:hidden;height:100dvh;touch-action:none}
+.cine .frame{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 112px)}
+.cine .frame{position:fixed;inset:0;visibility:hidden}
+.cine .frame.on,.cine .frame.leaving{visibility:visible}
+.cine .frame.on{z-index:5;animation:reveal 1s var(--ease) both}
+.cine .frame.on.back{animation:revealDown 1s var(--ease) both}
+.cine .frame.leaving{z-index:4;animation:leave 1s var(--ease) both}
+.cine .frame.leaving.back{animation:leaveDown 1s var(--ease) both}
+.cine .frame.first{animation:none}
+@keyframes reveal{from{clip-path:inset(100% 0 0 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes revealDown{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0 0 0 0)}}
+@keyframes leave{to{transform:scale(.88) translateY(-4%);filter:brightness(.25)}}
+@keyframes leaveDown{to{transform:scale(.88) translateY(4%);filter:brightness(.25)}}
+.cine .frame .bg{transform:scale(1.18);transition:transform 1.8s var(--ease)}
+.cine .frame.on .bg{transform:scale(1)}
+
+/* element entrances (cinematic mode only) */
+.cine .up{opacity:0;transform:translateY(40px)}
+.cine .frame.live .up{opacity:1;transform:none;transition:opacity .9s var(--ease),transform .9s var(--ease);transition-delay:calc(var(--d,0) * 110ms + 250ms)}
+.cine .zoom{opacity:0;transform:scale(1.35)}
+.cine .frame.live .zoom{opacity:1;transform:none;transition:opacity 1.2s var(--ease),transform 1.6s var(--ease);transition-delay:calc(var(--d,0) * 110ms + 200ms)}
+.mask{display:block;overflow:hidden;padding-bottom:.04em}
+.mask>span{display:block}
+.cine .mask>span{transform:translateY(110%)}
+.cine .frame.live .mask>span{transform:none;transition:transform 1s var(--ease);transition-delay:calc(var(--d,0) * 120ms + 250ms)}
+
+/* ---------- chrome ---------- */
+.top{position:fixed;inset:0 0 auto;z-index:20;padding-top:env(safe-area-inset-top,0px);pointer-events:none}
+.top .in{max-width:1080px;margin:0 auto;padding:14px max(22px,env(safe-area-inset-right,0px)) 14px max(22px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:12px}
+.top img{width:40px;height:40px;object-fit:contain;background:#fff;border-radius:50%;padding:3px;pointer-events:auto}
+.top b{font-family:var(--f-display);font-size:20px;letter-spacing:.06em;flex:1}
+.top a{pointer-events:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;border-radius:4px;padding:14px 22px;font-weight:800;text-decoration:none;border:0;
+  font-size:15px;letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;transition:transform .2s,background .2s}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold);color:#000}
+.btn-line{background:transparent;color:var(--white);box-shadow:inset 0 0 0 2px rgba(255,255,255,.7)}
+.top .btn{padding:9px 14px;font-size:12px}
+.count{position:fixed;left:max(22px,env(safe-area-inset-left,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 22px);z-index:20;font-family:var(--f-display);font-size:14px;letter-spacing:.2em;color:var(--mist)}
+.count b{color:var(--white);font-weight:400}
+.bar{position:fixed;left:0;right:0;bottom:0;height:3px;z-index:21;background:rgba(255,255,255,.08)}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold),var(--ember));transition:width 1s var(--ease)}
+.next{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);transform:translateX(-50%);z-index:20;background:none;border:0;
+  display:flex;flex-direction:column;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.3em;text-transform:uppercase;color:var(--mist)}
+.next svg{width:22px;height:22px;stroke:var(--gold);fill:none;stroke-width:2.4;animation:bob 1.6s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(4px)}50%{transform:translateY(-4px)}}
+.no-cine .count,.no-cine .bar,.no-cine .next{display:none}
+
+/* ---------- type ---------- */
+.kick{font-size:13px;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:var(--gold)}
+.mega{font-family:var(--f-display);text-transform:uppercase;line-height:.88;letter-spacing:.005em;font-size:clamp(64px,19vw,190px)}
+.huge{font-family:var(--f-display);text-transform:uppercase;line-height:.9;font-size:clamp(46px,13vw,130px)}
+.big{font-family:var(--f-display);text-transform:uppercase;line-height:.95;font-size:clamp(34px,9vw,84px)}
+.lead{font-size:clamp(16px,4.2vw,21px);color:var(--mist);line-height:1.45;max-width:34em}
+.gold{color:var(--gold)}
+.fire{background:linear-gradient(100deg,var(--gold-2),var(--gold) 35%,var(--ember) 70%,var(--rose));-webkit-background-clip:text;background-clip:text;color:transparent}
+.outline{color:transparent;-webkit-text-stroke:2px rgba(247,244,238,.85)}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.tags{display:flex;gap:8px;flex-wrap:wrap}
+.tags span{font-size:12px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;border:1px solid var(--line);padding:6px 10px;color:var(--mist)}
+
+/* frame backgrounds */
+.b1{background:radial-gradient(60% 50% at 50% 35%,rgba(245,182,35,.28),transparent 70%),radial-gradient(70% 60% at 50% 120%,rgba(255,106,43,.35),transparent 70%),var(--black)}
+.b2{background:linear-gradient(180deg,#0b0b10 0%,#14102a 50%,#2a0f2f 100%)}
+.b3{background:radial-gradient(70% 60% at 85% 20%,rgba(232,70,124,.32),transparent 65%),radial-gradient(60% 60% at 10% 90%,rgba(106,61,240,.35),transparent 65%),#0a0812}
+.b5{background:radial-gradient(60% 60% at 50% 100%,rgba(245,182,35,.35),transparent 70%),linear-gradient(180deg,#0c0a08,#1c1206)}
+.b6{background:linear-gradient(160deg,#07102b 0%,#0f2a6b 55%,#050505 100%)}
+.b7{background:radial-gradient(80% 70% at 50% 110%,rgba(255,106,43,.45),transparent 70%),radial-gradient(50% 40% at 50% 0%,rgba(245,182,35,.18),transparent 70%),var(--black)}
+
+/* 1 intro */
+.crest{width:clamp(92px,22vw,150px);aspect-ratio:1;border-radius:50%;background:#fff;padding:10px;box-shadow:0 0 0 3px var(--gold),0 0 80px rgba(245,182,35,.5)}
+.crest img{width:100%;height:100%;object-fit:contain}
+.f1 .wrap{align-items:center;text-align:center}
+
+/* 2 classes */
+.nums{display:flex;gap:clamp(4px,1.6vw,14px);flex-wrap:wrap}
+.nums span{font-family:var(--f-display);font-size:clamp(40px,11vw,96px);line-height:1;width:1.25em;text-align:center}
+.nums span.hi{color:var(--gold)}
+
+/* 3 features */
+.feat{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.feat div{background:rgba(5,5,5,.72);padding:clamp(10px,2vh,16px) 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.feat b{font-family:var(--f-display);font-size:clamp(18px,4.8vw,26px);letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+.feat span{font-size:13px;color:var(--mist);line-height:1.35}
+
+/* 4 NareX: full-bleed photo */
+.f4 .bg{background:#000}
+.f4 .bg img{width:100%;height:100%;object-fit:cover;object-position:62% 25%;filter:saturate(1.1) contrast(1.05)}
+.f4 .shade{background:linear-gradient(180deg,rgba(5,5,5,.15) 0%,rgba(5,5,5,.2) 35%,rgba(5,5,5,.92) 72%,#050505 100%),linear-gradient(90deg,rgba(106,61,240,.35),transparent 60%)}
+.f4{align-items:flex-end}
+.quote{font-size:clamp(17px,4.4vw,22px);line-height:1.4;border-left:3px solid var(--gold);padding-left:14px;max-width:30em}
+
+/* 5 book */
+.bookrow{display:flex;gap:clamp(18px,4vw,40px);align-items:center;flex-wrap:wrap}
+.cover{width:clamp(108px,32vw,260px);border-radius:6px;box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.12),0 0 120px rgba(245,182,35,.25);transform:rotate(-6deg)}
+.cine .cover.zoom{transform:rotate(-20deg) scale(1.4)}
+.cine .frame.live .cover.zoom{transform:rotate(-6deg)}
+.bookrow .t{flex:1;min-width:220px;display:flex;flex-direction:column;gap:clamp(8px,1.6vh,14px)}
+.price{font-family:var(--f-display);font-size:clamp(80px,22vw,180px);line-height:.85;color:var(--gold)}
+.price small{font-size:.22em;color:var(--mist);letter-spacing:.2em;margin-left:6px}
+
+/* 6 teacher */
+.f6 .wrap{gap:clamp(12px,2.6vh,22px)}
+.stats{display:flex;gap:clamp(16px,6vw,48px);flex-wrap:wrap}
+.stats div{display:flex;flex-direction:column}
+.stats b{font-family:var(--f-display);font-size:clamp(40px,11vw,80px);line-height:1;color:var(--gold)}
+.stats span{font-size:12px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--mist)}
+
+/* 7 join */
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line)}
+.steps div{background:rgba(5,5,5,.75);padding:12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.steps i{font-family:var(--f-display);font-style:normal;font-size:30px;color:var(--gold);line-height:1}
+.steps b{font-size:15px}
+.steps span{font-size:12px;color:var(--mist);line-height:1.35}
+.links{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:14px;color:var(--mist)}
+.links a{display:inline-flex;align-items:center;gap:8px;text-decoration:none;color:var(--white);font-weight:700}
+.links svg{width:26px;height:18px}
+.foot{font-size:12px;color:#77726a;letter-spacing:.1em;text-transform:uppercase}
+
+/* NareX chat */
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(env(safe-area-inset-bottom,0px) + 54px);z-index:25;display:flex;align-items:center;gap:8px;
+  border:0;border-radius:999px;padding:5px 16px 5px 5px;background:var(--gold);color:#000;font-weight:800;font-size:13px;letter-spacing:.1em;text-transform:uppercase;box-shadow:0 10px 30px rgba(245,182,35,.35)}
+.fab img{width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid #000}
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;touch-action:auto}
+.panel{width:100%;max-width:560px;height:min(86dvh,720px);background:#121216;color:var(--white);border-radius:16px 16px 0 0;display:flex;flex-direction:column;overflow:hidden;border:1px solid var(--line);animation:sheetUp .45s var(--ease)}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+.ph{display:flex;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#1b1530,#121216)}
+.ph img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)}
+.ph div{flex:1;min-width:0}.ph b{font-family:var(--f-display);font-size:22px;letter-spacing:.06em;display:block;line-height:1}.ph small{color:var(--mist);font-size:12px}
+.ph button{background:rgba(255,255,255,.08);border:0;border-radius:8px;width:38px;height:38px;font-size:18px}
+.msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;overscroll-behavior:contain}
+.m{max-width:86%;padding:10px 13px;border-radius:14px;font-size:16px;line-height:1.5;overflow-wrap:anywhere;white-space:pre-wrap}
+.m.bot{background:#1e1e24;border:1px solid var(--line);border-bottom-left-radius:4px;align-self:flex-start}
+.m.me{background:var(--gold);color:#000;border-bottom-right-radius:4px;align-self:flex-end;font-weight:500}
+.qs{display:flex;gap:6px;flex-wrap:wrap;padding:0 14px 8px}
+.qs button{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 11px;font-size:13px;color:var(--white)}
+.compose{display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.compose input{flex:1;min-width:0;font:inherit;font-size:16px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#0b0b0e;color:var(--white)}
+.compose button{border:0;border-radius:10px;padding:0 16px;background:var(--gold);color:#000;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:13px}
+.compose button:disabled{opacity:.45}
+.left{font-size:12px;color:var(--mist);text-align:center;padding:0 0 6px}
+.dotty{display:inline-flex;gap:4px}.dotty i{width:7px;height:7px;border-radius:50%;background:var(--mist);animation:bl 1s infinite}.dotty i:nth-child(2){animation-delay:.2s}.dotty i:nth-child(3){animation-delay:.4s}
+@keyframes bl{0%,100%{opacity:.25}50%{opacity:1}}
+
+@media (max-width:520px){.steps{grid-template-columns:1fr}.steps div{flex-direction:row;align-items:baseline;gap:10px}.top .btn{display:none}}
+@media (max-height:740px){.mega{font-size:clamp(52px,15vw,150px)}.huge{font-size:clamp(42px,12vw,110px)}.price{font-size:clamp(60px,17vw,140px)}.cover{width:clamp(96px,27vw,220px)}.crest{width:84px}}
+@media (max-height:640px){.lead{font-size:15px}.feat span{display:none}.f4 .quote{font-size:16px}}
+@media (prefers-reduced-motion:reduce){
+  .cine .frame.on,.cine .frame.leaving{animation:fade .4s both}
+  .cine .frame.leaving{animation-direction:reverse}
+  .cine .up,.cine .zoom,.cine .mask>span,.cine .cover.zoom{opacity:1!important;transform:none!important;transition:none!important}
+  .cine .frame .bg{transform:none;transition:none}.next svg{animation:none}
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>
 <header class="top"><div class="in">
-  <img src="../logo.png" alt="">
+  <img src="../logo.png" alt="JRP Education">
   <b>JRP EDUCATION</b>
-  <a class="pill pill-gold" href="../">Open App</a>
+  <a class="btn btn-gold" href="../">Open App</a>
 </div></header>
-<nav class="dots" id="dots" aria-label="Sections"></nav>
 
-<main class="deck" id="deck">
+<main id="stage">
 
-  <!-- 1 hero -->
-  <section class="frame f-hero" id="home" aria-label="Welcome">
+  <section class="frame f1" aria-label="JRP Education">
+    <div class="bg b1"></div><div class="shade"></div>
     <div class="wrap">
-      <div class="crest rv"><img src="../logo.png" alt="JRP Education logo"></div>
-      <p class="eyebrow rv">Jaipur · Think · Learn · Grow · Succeed</p>
-      <h1 class="big rv">Maths ka <span class="g">Rockstar</span> banao.</h1>
-      <p class="lead rv">Class 6 se 12 tak Maths, Hindi aur English medium mein. Tests, test series, rank aur ek AI teacher, sab ek app mein.</p>
-      <div class="row rv">
-        <a class="pill pill-gold" href="../">Open the App →</a>
-        <button class="pill pill-ghost" data-ask>Talk to NareX</button>
-      </div>
-    </div>
-    <button class="swipe" data-next aria-label="Next section"><i></i>Swipe up</button>
-  </section>
-
-  <!-- 2 courses -->
-  <section class="frame f-blue" id="courses" aria-label="Courses">
-    <div class="wrap">
-      <p class="eyebrow rv">Courses</p>
-      <h2 class="h2 rv">Class 6 → 12.<br>Sirf Maths. Poori taiyari.</h2>
-      <div class="classes rv"><span>6</span><span>7</span><span>8</span><span>9</span><span class="b">10</span><span>11</span><span class="b">12</span></div>
-      <div class="grid rv">
-        <div class="card"><span class="n">2</span><b>Medium</b><span>Hindi aur English, alag-alag chapters aur tests</span></div>
-        <div class="card"><span class="n">NCERT</span><b>+ RBSE Board</b><span>Har chapter ke saath official NCERT book</span></div>
-      </div>
+      <div class="crest zoom"><img src="../logo.png" alt="JRP Education logo"></div>
+      <p class="kick up" style="--d:2">Jaipur · Class 6–12 · Maths</p>
+      <h1 class="mega"><span class="mask" style="--d:3"><span>JRP</span></span><span class="mask" style="--d:4"><span class="fire">Education</span></span></h1>
+      <p class="lead up" style="--d:6">Think. Learn. Grow. Succeed.</p>
+      <div class="row up" style="--d:7;justify-content:center"><a class="btn btn-gold" href="../">Open the App</a><button class="btn btn-line" data-ask>Ask NareX</button></div>
     </div>
   </section>
 
-  <!-- 3 app features -->
-  <section class="frame f-flame" id="app" aria-label="App features">
+  <section class="frame f2" aria-label="Classes">
+    <div class="bg b2"></div><div class="shade"></div>
     <div class="wrap">
-      <p class="eyebrow rv">Inside the app</p>
-      <h2 class="h2 rv">Padho. Test do. Rank lo.</h2>
-      <div class="grid rv">
-        <div class="card"><span class="ic c1"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M9 12l2 2 4-4"/></svg></span><b>Chapter Tests</b><span>+4 / −1 marking, har sawal ka hal</span></div>
-        <div class="card"><span class="ic c3"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/></svg></span><b>Test Series</b><span>Fixed date par test aur class rank</span></div>
-        <div class="card"><span class="ic c6"><svg viewBox="0 0 24 24"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg></span><b>NareX AI</b><span>Doubt likho ya photo bhejo, step-by-step hal</span></div>
-        <div class="card"><span class="ic c5"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg></span><b>Daily Challenge</b><span>Roz ek naya sawal aur streak</span></div>
-        <div class="card"><span class="ic c2"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5"/></svg></span><b>Notes & Videos</b><span>Chapter-wise notes aur YouTube lessons</span></div>
-        <div class="card"><span class="ic c4"><svg viewBox="0 0 24 24"><path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6"/></svg></span><b>Progress</b><span>Results, average aur galtiyon ki practice</span></div>
+      <p class="kick up">Courses</p>
+      <h2 class="huge"><span class="mask" style="--d:1"><span>Class 6</span></span><span class="mask" style="--d:2"><span><span class="outline">to</span> <span class="gold">12</span></span></span></h2>
+      <div class="nums up" style="--d:4"><span>6</span><span>7</span><span>8</span><span>9</span><span class="hi">10</span><span>11</span><span class="hi">12</span></div>
+      <p class="lead up" style="--d:5">Sirf Maths. Hindi aur English medium. NCERT syllabus, RBSE board ki poori taiyari.</p>
+      <div class="tags up" style="--d:6"><span>Hindi medium</span><span>English medium</span><span>NCERT</span><span>RBSE</span></div>
+    </div>
+  </section>
+
+  <section class="frame f3" aria-label="App">
+    <div class="bg b3"></div><div class="shade"></div>
+    <div class="wrap">
+      <p class="kick up">The App</p>
+      <h2 class="big"><span class="mask" style="--d:1"><span>Padho.</span></span><span class="mask" style="--d:2"><span class="fire">Test do.</span></span><span class="mask" style="--d:3"><span>Rank lo.</span></span></h2>
+      <div class="feat up" style="--d:5">
+        <div><b>Chapter Tests</b><span>+4 / −1, har sawal ka hal</span></div>
+        <div><b>Test Series</b><span>Fixed date, class rank</span></div>
+        <div><b>NareX AI</b><span>Photo bhejo, step-by-step hal</span></div>
+        <div><b>Daily Challenge</b><span>Roz ek sawal, streak</span></div>
+        <div><b>Notes &amp; Videos</b><span>Har chapter ke saath</span></div>
+        <div><b>Free Mock Test</b><span>Bina login, abhi try karo</span></div>
       </div>
     </div>
   </section>
 
-  <!-- 4 book -->
-  <section class="frame f-gold" id="book" aria-label="Formula book">
+  <section class="frame f4" aria-label="Meet NareX">
+    <div class="bg zoom"><img src="narex.jpg" alt=""></div><div class="shade"></div>
     <div class="wrap">
-      <p class="eyebrow rv">New · Formula Book</p>
-      <div class="book rv">
-        <img src="../books/formula-10-hindi-cover.jpg" alt="JRP Maths Concepts, Class 10 Hindi Edition cover">
-        <div class="bt">
-          <h2 class="h2">JRP Maths Concepts</h2>
-          <p class="lead">Class 10 · Hindi Edition · RBSE 2026-27</p>
-          <p class="price">₹9 <small>only</small></p>
-          <ul class="ticks"><li>Sabhi 14 adhyay, 58 pages</li><li>Sutra-saransh aur hal sahit udaharan</li><li>Model paper aur 7 din ki yojana</li></ul>
-          <div class="row"><a class="pill pill-gold" href="../">Buy in App →</a></div>
+      <p class="kick up">Introducing</p>
+      <h2 class="mega"><span class="mask" style="--d:1"><span>NareX</span></span></h2>
+      <p class="quote up" style="--d:3">"Main NareX hoon, JRP Education ka AI guide. Kaunsa course, kitne ka, kaise join karna hai, poocho, main samjhata hoon."</p>
+      <div class="row up" style="--d:4"><button class="btn btn-gold" data-ask>Talk to NareX</button><button class="btn btn-line" data-ask="Kaun-kaun se courses hain?">Courses kya hain?</button></div>
+    </div>
+  </section>
+
+  <section class="frame f5" aria-label="Formula book">
+    <div class="bg b5"></div><div class="shade"></div>
+    <div class="wrap">
+      <p class="kick up">Now available</p>
+      <div class="bookrow">
+        <img class="cover zoom" style="--d:1" src="../books/formula-10-hindi-cover.jpg" alt="JRP Maths Concepts, Class 10 Hindi Edition">
+        <div class="t">
+          <h2 class="big"><span class="mask" style="--d:2"><span>JRP Maths</span></span><span class="mask" style="--d:3"><span>Concepts</span></span></h2>
+          <p class="lead up" style="--d:4">Class 10 · Hindi Edition · RBSE 2026-27 · 14 adhyay, 58 pages</p>
+          <p class="price up" style="--d:5">₹9<small>Only</small></p>
+          <div class="row up" style="--d:6"><a class="btn btn-gold" href="../">Buy in App</a></div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- 5 NareX -->
-  <section class="frame f-blue" id="narex" aria-label="Meet NareX">
+  <section class="frame f6" aria-label="Teacher">
+    <div class="bg b6"></div><div class="shade"></div>
     <div class="wrap">
-      <p class="eyebrow rv">Meet NareX</p>
-      <div class="nx rv">
-        <div class="nx-pic"><img src="narex.jpg" alt="NareX"></div>
-        <div class="bt">
-          <h2 class="h2">Aapka Maths Rockstar.</h2>
-          <p class="bubble">Yo! Main NareX hoon 🎸 Kaunsa course, kitne ka, kaise join karna hai? Kuch bhi poocho, main sab samjha dunga!</p>
-          <div class="chips">
-            <button data-ask="Kaun-kaun se courses hain?">Courses kya hain?</button>
-            <button data-ask="Formula book mein kya hai?">Formula book?</button>
-            <button data-ask="App kaise join karein?">Kaise join karein?</button>
-          </div>
-          <div class="row"><button class="pill pill-gold" data-ask>Chat with NareX</button></div>
-        </div>
-      </div>
+      <p class="kick up">Founder &amp; Author</p>
+      <h2 class="huge"><span class="mask" style="--d:1"><span>Naresh</span></span><span class="mask" style="--d:2"><span class="fire">Prajapat</span></span></h2>
+      <p class="lead up" style="--d:3">JRP Education ke founder aur <b>JRP Maths Concepts</b> ke lekhak. Aasaan tareeke, board pattern ki samajh, aur har student par dhyan.</p>
+      <div class="stats up" style="--d:4"><div><b>6–12</b><span>Classes</span></div><div><b>2</b><span>Mediums</span></div><div><b>Jaipur</b><span>Rajasthan</span></div></div>
     </div>
   </section>
 
-  <!-- 6 teacher -->
-  <section class="frame f-flame" id="teacher" aria-label="Teacher">
+  <section class="frame f7" aria-label="Join">
+    <div class="bg b7"></div><div class="shade"></div>
     <div class="wrap">
-      <p class="eyebrow rv">Your teacher</p>
-      <h2 class="h2 rv">Naresh Prajapat</h2>
-      <p class="lead rv">Founder, JRP Education · Author of <b>JRP Maths Concepts</b>. Board pattern ki samajh, aasaan tareeke, aur har student par dhyan.</p>
-      <div class="grid rv">
-        <div class="card"><span class="n">6–12</span><b>Classes</b><span>Foundation se board tak</span></div>
-        <div class="card"><span class="n">80/80</span><b>Board target</b><span>RBSE paper pattern par focus</span></div>
+      <p class="kick up">Join free</p>
+      <h2 class="mega"><span class="mask" style="--d:1"><span>Start</span></span><span class="mask" style="--d:2"><span class="fire">Now.</span></span></h2>
+      <div class="steps up" style="--d:3">
+        <div><i>1</i><b>App kholo</b><span>Chrome mein "Install app"</span></div>
+        <div><i>2</i><b>Account banao</b><span>Class aur medium chuno</span></div>
+        <div><i>3</i><b>Test do</b><span>Free mock test se shuru</span></div>
       </div>
-    </div>
-  </section>
-
-  <!-- 7 join + contact -->
-  <section class="frame f-hero" id="join" aria-label="Join and contact">
-    <div class="wrap">
-      <p class="eyebrow rv">Join now · Free</p>
-      <h2 class="h2 rv">3 steps. Bas.</h2>
-      <div class="steps rv">
-        <div class="card"><span class="num">1</span><b>App kholo</b><span>Neeche button dabao, Chrome mein "Install app"</span></div>
-        <div class="card"><span class="num">2</span><b>Account banao</b><span>"Create student account", class aur medium chuno</span></div>
-        <div class="card"><span class="num">3</span><b>Shuru karo</b><span>Free mock test do aur rank pao</span></div>
+      <div class="row up" style="--d:4"><a class="btn btn-gold" href="../">Open the App</a></div>
+      <div class="links up" style="--d:5">
+        <a href="https://www.youtube.com/@jrpedu2026" target="_blank" rel="noopener"><svg viewBox="0 0 28 20" aria-hidden="true"><rect width="28" height="20" rx="5" fill="#e62117"/><path d="M11 6v8l7-4z" fill="#fff"/></svg>@jrpedu2026</a>
+        <span>Jaipur, Rajasthan · Contact number coming soon</span>
       </div>
-      <div class="row rv"><a class="pill pill-gold" href="../">Open the App →</a></div>
-      <div class="contact rv">
-        <a class="yt" href="https://www.youtube.com/@jrpedu2026" target="_blank" rel="noopener"><span class="y"><svg viewBox="0 0 24 24"><path d="M9 7.5v9l7.5-4.5z"/></svg></span><span><b>YouTube</b><small>@jrpedu2026 · video lessons</small></span></a>
-        <div class="card"><b>Jaipur, Rajasthan</b><span>JRP Education · contact number coming soon</span></div>
-      </div>
-      <p class="foot rv">© 2026 JRP Education, Jaipur</p>
+      <p class="foot up" style="--d:6">© 2026 JRP Education, Jaipur</p>
     </div>
   </section>
 </main>
 
+<div class="grain" aria-hidden="true"></div>
+<div class="count" id="count" aria-hidden="true"><b>01</b> / 07</div>
+<div class="bar" aria-hidden="true"><i id="barI"></i></div>
+<button class="next" id="next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></svg>Swipe up</button>
 <button class="fab" id="fab" data-ask><img src="narex-face.jpg" alt="">Ask NareX</button>
 
 <div class="sheet" id="sheet" hidden>
   <div class="panel" role="dialog" aria-modal="true" aria-label="Chat with NareX">
-    <div class="ph"><img src="narex-face.jpg" alt=""><div><b>NareX</b><small>JRP Education ka AI guide</small></div><button id="close" aria-label="Close">✕</button></div>
+    <div class="ph"><img src="narex-face.jpg" alt=""><div><b>NAREX</b><small>JRP Education ka AI guide</small></div><button id="close" aria-label="Close">✕</button></div>
     <div class="msgs" id="msgs"></div>
-    <div class="qs" id="qs">
-      <button>Kaun-kaun se courses hain?</button><button>Formula book kitne ki hai?</button><button>App kaise join karein?</button><button>Test series kya hai?</button>
-    </div>
+    <div class="qs" id="qs"><button>Kaun-kaun se courses hain?</button><button>Formula book kitne ki hai?</button><button>App kaise join karein?</button><button>Test series kya hai?</button></div>
     <p class="left" id="left"></p>
     <form class="compose" id="cf"><input id="cq" type="text" placeholder="Kuch bhi poocho…" autocomplete="off"><button id="cs" type="submit">Send</button></form>
   </div>
 </div>
 
 <script>
-document.documentElement.classList.add("js");
-const deck = document.getElementById("deck"), frames = [...document.querySelectorAll(".frame")], dots = document.getElementById("dots");
-frames.forEach((f, i) => { const b = document.createElement("button"); b.setAttribute("aria-label", f.getAttribute("aria-label")); b.onclick = () => f.scrollIntoView(); dots.appendChild(b); });
-const io = new IntersectionObserver(es => es.forEach(e => {
-  if (e.isIntersecting) {
-    e.target.classList.add("in");
-    const i = frames.indexOf(e.target);
-    [...dots.children].forEach((d, k) => d.setAttribute("aria-current", k === i));
+(function () {
+  var root = document.documentElement, frames = [].slice.call(document.querySelectorAll(".frame"));
+  if (!("animate" in document.body) || frames.length < 2) { root.classList.add("no-cine"); return; }
+  root.classList.add("cine");
+  var cur = 0, busy = false, N = frames.length;
+  var count = document.getElementById("count"), bar = document.getElementById("barI"), nextBtn = document.getElementById("next");
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function hud() {
+    count.innerHTML = "<b>" + pad(cur + 1) + "</b> / " + pad(N);
+    bar.style.width = ((cur + 1) / N * 100) + "%";
+    nextBtn.hidden = cur === N - 1;
   }
-}), { root: deck, threshold: 0.55 });
-frames.forEach(f => io.observe(f));
-frames[0].classList.add("in");
-document.querySelector("[data-next]").onclick = () => frames[1].scrollIntoView();
+  function go(to) {
+    if (busy || to === cur || to < 0 || to >= N) return;
+    busy = true;
+    var from = frames[cur], dir = to > cur ? "" : "back", next = frames[to];
+    frames.forEach(function (f) { f.classList.remove("leaving", "back", "first"); });
+    from.classList.remove("on", "live"); from.classList.add("leaving"); if (dir) from.classList.add(dir);
+    next.classList.add("on"); if (dir) next.classList.add(dir);
+    requestAnimationFrame(function () { requestAnimationFrame(function () { next.classList.add("live"); }); });
+    cur = to; hud();
+    setTimeout(function () { from.classList.remove("leaving", "back"); busy = false; }, 1000);
+  }
+  frames[0].classList.add("on", "first");
+  requestAnimationFrame(function () { requestAnimationFrame(function () { frames[0].classList.add("live"); }); });
+  hud();
+  function chatOpen() { return !document.getElementById("sheet").hidden; }
+  var y0 = null;
+  window.addEventListener("touchstart", function (e) { if (!chatOpen()) y0 = e.touches[0].clientY; }, { passive: true });
+  window.addEventListener("touchend", function (e) {
+    if (y0 === null || chatOpen()) return;
+    var dy = y0 - e.changedTouches[0].clientY; y0 = null;
+    if (Math.abs(dy) > 45) go(cur + (dy > 0 ? 1 : -1));
+  }, { passive: true });
+  var wheelLock = 0;
+  window.addEventListener("wheel", function (e) {
+    if (chatOpen()) return;
+    var now = Date.now(); if (now < wheelLock || Math.abs(e.deltaY) < 18) return;
+    wheelLock = now + 1100; go(cur + (e.deltaY > 0 ? 1 : -1));
+  }, { passive: true });
+  window.addEventListener("keydown", function (e) {
+    if (chatOpen()) return;
+    if (["ArrowDown", "PageDown", " "].indexOf(e.key) >= 0) { e.preventDefault(); go(cur + 1); }
+    if (["ArrowUp", "PageUp"].indexOf(e.key) >= 0) { e.preventDefault(); go(cur - 1); }
+  });
+  nextBtn.onclick = function () { go(cur + 1); };
+})();
 </script>
 <script type="module">
 import { firebaseConfig } from "../firebase-config.js";
@@ -313,17 +370,17 @@ const DAILY = 10, SDKS = ["12.6.0", "12.2.1", "12.0.0"], MODELS = ["gemini-flash
 const FACTS = `JRP Education facts (use ONLY these; never invent prices, phone numbers, dates or results):
 - Coaching in Jaipur, Rajasthan. Teacher and founder: Naresh Prajapat, author of the book "JRP Maths Concepts".
 - Subject: Mathematics only, Class 6 to 12, Hindi medium and English medium. NCERT syllabus with RBSE board focus.
-- Everything is in the JRP Education app, which is FREE to join: open the app link, tap "Create student account", choose class and medium.
+- Everything is in the JRP Education app, which is FREE to join: open the app, tap "Create student account", choose class and medium.
 - In the app: chapter-wise tests (+4 correct, −1 wrong), Full Syllabus Test (25 questions), scheduled Test Series with class rank and leaderboard, Free Mock Test (Class 10 Maths, 10 MCQ, no login needed), Daily Maths Challenge with streak, practice of your wrong answers, notes and YouTube video per chapter, official NCERT book link for every chapter, results and progress.
-- NareX AI inside the app solves maths doubts step by step; students can even send a photo of the question (15 questions a day).
-- Book: "JRP Maths Concepts", Class 10, Hindi Edition, RBSE 2026-27, 58 pages, all 14 chapters, formula summary, solved examples, practice questions, model papers, exam tips and a 7-day plan. Price ₹9. Buy inside the app (Books → Unlock); it opens after the teacher confirms payment, and is read inside the app.
+- NareX AI inside the app solves maths doubts step by step; students can send a photo of the question (15 questions a day).
+- Book: "JRP Maths Concepts", Class 10, Hindi Edition, RBSE 2026-27, 58 pages, all 14 chapters, formula summary, solved examples, practice questions, model papers, exam tips and a 7-day plan. Price ₹9. Buy inside the app (Books → Unlock); it opens after the teacher confirms payment and is read inside the app.
 - More courses (Vedic Maths, Olympiad Maths) are coming soon.
 - YouTube channel: @jrpedu2026. Contact phone number: coming soon.
-- Can be installed on Android (Chrome → Install app) and iPhone (Safari → Share → Add to Home Screen).`;
-const PROMPT = `You are NareX, the rockstar AI guide on the JRP Education website. Personality: high-energy, confident, fun and friendly, like a rock star who loves maths, with a few music words ("let's rock", "encore", "stage") and at most one or two emoji per reply. Stay respectful and simple.
+- Install: Android (Chrome → Install app), iPhone (Safari → Share → Add to Home Screen).`;
+const PROMPT = `You are NareX, the AI guide on the JRP Education website. Personality: high-energy, confident, cool and friendly, like the hype host of a big launch; short punchy lines, at most one emoji per reply. Stay respectful and simple.
 Your job: explain JRP Education's courses and app to students and parents and guide them to join. Reply in the same language the visitor uses (Hinglish, Hindi in Devanagari, or English). Keep replies short: 2 to 5 lines or a few bullets. End with a clear next step, usually "Open the App" or "Create student account".
-If asked a maths question, give a short helpful hint and say the full step-by-step solution is in the app's NareX.
-If you do not know something (for example fees for other courses, timings, phone number), say it will be announced soon and suggest the YouTube channel. Never make up facts.
+If asked a maths question, give a short hint and say the full step-by-step solution is in the app's NareX.
+If you do not know something (fees for other courses, timings, phone number), say it will be announced soon and suggest the YouTube channel. Never make up facts.
 ${FACTS}`;
 const $ = id => document.getElementById(id);
 const sheet = $("sheet"), msgs = $("msgs"), cq = $("cq"), cs = $("cs"), left = $("left");
@@ -349,9 +406,9 @@ async function init() {
 }
 function open(q) {
   sheet.hidden = false;
-  if (!greeted) { greeted = true; bubble("bot", "Yo! 🎸 Main NareX hoon, JRP Education ka rockstar guide. Courses, Formula Book, test series, join kaise karein, kuch bhi poocho!"); }
+  if (!greeted) { greeted = true; bubble("bot", "Namaste! Main NareX hoon, JRP Education ka AI guide. Courses, Formula Book, test series, join kaise karein, kuch bhi poocho! ⚡"); }
   showLeft();
-  if (q) send(q); else setTimeout(() => cq.focus(), 300);
+  if (q) send(q); else setTimeout(() => cq.focus(), 350);
 }
 document.querySelectorAll("[data-ask]").forEach(b => b.addEventListener("click", () => open(b.dataset.ask || "")));
 $("close").onclick = () => { sheet.hidden = true; };
@@ -371,7 +428,7 @@ async function send(q) {
     use();
   } catch (x) {
     const s = String(x && (x.message || x.code) || "");
-    out.innerHTML = s.includes("429") || s.includes("quota") ? "Abhi bahut log baat kar rahe hain! Thodi der mein phir try karo. 🎸" : "Oops, connection gaya. Internet check karke dobara try karo.";
+    out.innerHTML = s.includes("429") || s.includes("quota") ? "Abhi bahut log baat kar rahe hain! Thodi der mein phir try karo." : "Oops, connection gaya. Internet check karke dobara try karo.";
     chat = null;
   }
   showLeft();
