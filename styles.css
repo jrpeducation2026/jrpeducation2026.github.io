@@ -436,3 +436,5 @@ img{-webkit-user-drag:none}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation;overscroll-behavior:none}
 body{overscroll-behavior:none}
 main.reader{touch-action:pan-x pan-y pinch-zoom}
+/* header bars: back button and logo always start at the left corner, on any screen width */
+.top .in,.appbar .in,.tbar .in{max-width:none;margin:0}
