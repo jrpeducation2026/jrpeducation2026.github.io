@@ -108,7 +108,8 @@ const YOUTUBE_URL = "https://www.youtube.com/@jrpedu2026";
 const UPI_ID = "";            // set to the coaching UPI ID (e.g. "9876543210@ybl") to enable UPI payment
 const UPI_NAME = "JRP Education";
 const BOOKS = [
-  { id: "formula-10-hindi", title: "JRP Maths Concepts", sub: "Class 10 · Hindi Edition · RBSE 2026-27", price: 9, pages: 58,
+  // Demo book at ₹9. Add more books below with their own price.
+  { id: "formula-10-hindi", title: "JRP Maths Concepts", sub: "Demo Book · Class 10 · Hindi Edition", price: 9, pages: 58, demo: true,
     file: "books/formula-10-hindi.bin", cover: "books/formula-10-hindi-cover.jpg",
     points: ["सभी 14 अध्याय", "सूत्र-सारांश और हल सहित उदाहरण", "मॉडल पेपर और 7 दिन की योजना"] }
 ];
@@ -483,7 +484,7 @@ VIEWS.home = () => {
   <main><div class="in">
     <button class="promo" id="promo" data-book="${BOOKS[0].id}">
       <img src="${BOOKS[0].cover}" alt="" class="pm-cover">
-      <span class="pm-t"><span class="pm-tag">New · Formula Book</span><b>${esc(BOOKS[0].title)}</b><small>${esc(BOOKS[0].sub)}</small>
+      <span class="pm-t"><span class="pm-tag">${BOOKS[0].demo ? "Demo Book · Try at ₹9" : "New · Formula Book"}</span><b>${esc(BOOKS[0].title)}</b><small>${esc(BOOKS[0].sub)}</small>
         <span class="pm-row"><span class="pm-price">₹${BOOKS[0].price}</span><span class="pm-cta" id="pmCta">Unlock now →</span></span></span>
     </button>
     <div class="welcome"><div class="wl-av">${esc(initials(p.name))}</div><div class="wl-t"><small>Welcome back!</small><h1>${esc(first)}</h1><p>Class ${cls} · ${myMed()} medium · Keep learning, keep growing!</p></div></div>
