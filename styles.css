@@ -600,3 +600,10 @@ main.reader{touch-action:pan-x pan-y pinch-zoom}
 #ov .tbl td:nth-child(2){white-space:normal;min-width:150px}
 /* small phones: chip shows just the avatar so the full tagline fits */
 @media (max-width:400px){.ab-ct{display:none!important}.ab-chip{padding:2px 4px 2px 2px}.ab-t small{display:block;font-size:10px}}
+
+/* scroll ends right after the last line: space only for the bottom bar when it is shown */
+@supports selector(:has(a)){
+  main .in{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+  body:has(#nav:not([hidden])) main .in,body:has(#tnav:not([hidden])) main .in{padding-bottom:calc(var(--navh,66px) + 12px + env(safe-area-inset-bottom,0px))}
+  main.chatmain .in{padding-bottom:calc(var(--comph,120px) + 12px)}
+}

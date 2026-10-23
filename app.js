@@ -175,6 +175,21 @@ window.addEventListener("popstate", () => {
   if (TEST.running) { history.pushState({}, ""); toast("Submit the test before leaving."); return; }
   back();
 });
+// keep bottom padding equal to the real height of the bottom bar, so scrolling stops at the last line
+const fitBars = () => {
+  const r = document.documentElement.style;
+  const nb = [$nav, $tnav].find(n => n && !n.hidden);
+  if (nb && nb.offsetHeight) r.setProperty("--navh", nb.offsetHeight + "px");
+  const c = document.querySelector(".composer");
+  if (c && c.offsetHeight) r.setProperty("--comph", c.offsetHeight + "px");
+};
+if ("ResizeObserver" in window) {
+  const ro = new ResizeObserver(fitBars);
+  new MutationObserver(() => { const c = document.querySelector(".composer"); if (c && !c.__ro) { c.__ro = 1; ro.observe(c); } fitBars(); }).observe(document.getElementById("app") || document.body, { childList: true });
+  setTimeout(() => { [$nav, $tnav].forEach(n => n && ro.observe(n)); }, 0);
+}
+window.addEventListener("resize", fitBars);
+
 function render() {
   window.scrollTo(0, 0);
   const v = VIEWS[current.view];
