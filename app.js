@@ -587,6 +587,42 @@ async function fillTopper(box) {
   box.hidden = false;
 }
 
+/* ----- Maths Sections (same as website): School (RBSE/CBSE), Vedic, Olympiad, Competition ----- */
+const MSEC_ART = {
+  school: `<svg viewBox="0 0 160 96" aria-hidden="true"><rect x="14" y="10" width="104" height="66" rx="6" fill="#1d4d3a" stroke="#c9a46a" stroke-width="5"/><text x="66" y="38" text-anchor="middle" font-family="Caveat,cursive" font-weight="700" font-size="22" fill="#fff">a²+b²=c²</text><path d="M30 56h22M60 56h10" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity=".8"/><path d="M78 62l12-14 12 14z" fill="none" stroke="#ffd56a" stroke-width="2.5"/><rect x="104" y="44" width="44" height="40" rx="3" fill="#e2483d"/><rect x="108" y="44" width="40" height="40" rx="3" fill="#f2603f"/><path d="M114 54h26M114 61h20" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/><rect x="22" y="80" width="88" height="8" rx="3" fill="#d6a118" transform="rotate(-6 66 84)"/><path d="M30 80v4M40 79v5M50 78v4M60 77v5M70 76v4M80 75v5M90 74v4M100 73v5" stroke="#7a5a08" stroke-width="1.5" transform="rotate(-6 66 84)"/></svg>`,
+  vedic: `<svg viewBox="0 0 160 96" aria-hidden="true"><circle cx="80" cy="44" r="34" fill="#ffd56a" opacity=".18"/><g fill="#f58fb1" stroke="#c94c7c" stroke-width="2"><path d="M80 70C64 58 62 36 80 18c18 18 16 40 0 52z"/><path d="M80 70C60 66 46 50 48 32c18 2 30 20 32 38z"/><path d="M80 70c20-4 34-20 32-38-18 2-30 20-32 38z"/></g><path d="M50 74h60" stroke="#1d7a5a" stroke-width="5" stroke-linecap="round"/><text x="22" y="34" font-family="Baloo 2,sans-serif" font-weight="800" font-size="20" fill="#ffd56a">×</text><text x="124" y="34" font-family="Baloo 2,sans-serif" font-weight="800" font-size="18" fill="#fff">9²</text><text x="14" y="70" font-family="Baloo 2,sans-serif" font-weight="800" font-size="14" fill="#fff">25×25</text><text x="118" y="70" font-family="Baloo 2,sans-serif" font-weight="800" font-size="14" fill="#ffd56a">625</text><path d="M100 88l8-6-8-6" fill="none" stroke="#ffd56a" stroke-width="3" stroke-linecap="round"/></svg>`,
+  olympiad: `<svg viewBox="0 0 160 96" aria-hidden="true"><path d="M62 4l18 34 18-34z" fill="#2f6fe0"/><path d="M62 4h12l12 24-6 10z" fill="#e2483d"/><path d="M98 4H86L74 28l6 10z" fill="#e2483d" opacity=".85"/><circle cx="80" cy="60" r="28" fill="#d6a118" stroke="#a87908" stroke-width="4"/><circle cx="80" cy="60" r="19" fill="#ffd56a"/><path d="M80 47l4 9 10 1-7.5 6.5 2.3 9.5L80 68l-8.8 5 2.3-9.5L66 57l10-1z" fill="#a87908"/><g fill="#fff" opacity=".9"><rect x="14" y="40" width="20" height="20" rx="3"/><rect x="126" y="40" width="20" height="20" rx="3"/></g><text x="24" y="55" text-anchor="middle" font-family="Baloo 2,sans-serif" font-weight="800" font-size="14" fill="#0f2a6b">?</text><text x="136" y="55" text-anchor="middle" font-family="Baloo 2,sans-serif" font-weight="800" font-size="14" fill="#0f2a6b">π</text><path d="M18 76l4 4M22 76l-4 4M138 22l4 4M142 22l-4 4" stroke="#ffd56a" stroke-width="2" stroke-linecap="round"/></svg>`,
+  competition: `<svg viewBox="0 0 160 96" aria-hidden="true"><circle cx="64" cy="54" r="34" fill="#fff"/><circle cx="64" cy="54" r="34" fill="none" stroke="#e2483d" stroke-width="6"/><circle cx="64" cy="54" r="22" fill="none" stroke="#e2483d" stroke-width="5"/><circle cx="64" cy="54" r="9" fill="#e2483d"/><path d="M64 54l52-38" stroke="#0f2a6b" stroke-width="4" stroke-linecap="round"/><path d="M116 16l-4 12 10-4z" fill="#d6a118"/><path d="M110 12l14-2-6 8" fill="#d6a118"/><circle cx="126" cy="66" r="20" fill="#ffd56a" stroke="#a87908" stroke-width="3"/><rect x="122" y="40" width="8" height="6" rx="1" fill="#a87908"/><path d="M126 66V54M126 66l8 4" stroke="#0f2a6b" stroke-width="3" stroke-linecap="round"/></svg>`
+};
+const MSECS = [
+  { id: "school", n: "01", t: "School Maths", s: "RBSE & CBSE, Class 6 to 12. NCERT chapters, tests and notes." },
+  { id: "vedic", n: "02", t: "Vedic Maths", s: "Fast calculation tricks to solve sums in seconds.", soon: true },
+  { id: "olympiad", n: "03", t: "Olympiad Maths", s: "Puzzles, reasoning and Olympiad-pattern problems.", soon: true },
+  { id: "competition", n: "04", t: "Competition Maths", s: "Speed, accuracy and exam-level practice for competitive exams.", soon: true }
+];
+function msecHTML() {
+  return `<section class="msx"><p class="msx-k">Our Maths Sections</p><h2 class="msx-h">Think. <em>Learn.</em> Grow. <em>Succeed.</em></h2>
+    <div class="msx-g">${MSECS.map(m => `<div class="msx-c ${m.id}" data-ms="${m.id}" role="button" tabindex="0"${m.id === "school" ? ' aria-expanded="false"' : ""}>
+      <span class="msx-art">${MSEC_ART[m.id]}</span><i>${m.n}${m.soon ? `<small>Coming soon</small>` : ""}</i><b>${m.t}</b><span class="msx-s">${m.s}</span>
+      ${m.id === "school" ? `<em class="tap">Tap to choose board →</em><div class="boards" hidden><button data-bd="RBSE"><strong>RBSE</strong><span>Rajasthan Board</span></button><button data-bd="CBSE"><strong>CBSE</strong><span>Central Board</span></button></div>` : ""}
+    </div>`).join("")}</div></section>`;
+}
+function wireMsec(root) {
+  const cls = Number(S.profile.cls);
+  root.querySelectorAll("[data-ms]").forEach(c => {
+    const act = e => {
+      const bd = e.target.closest("[data-bd]");
+      if (bd) { go("board10", { cls, board: bd.dataset.bd }); return; }
+      const m = MSECS.find(x => x.id === c.dataset.ms);
+      if (m.soon) { toast(`${m.t} is coming soon`); return; }
+      const b = c.querySelector(".boards"), open = b.hidden;
+      b.hidden = !open; c.classList.toggle("open", open); c.setAttribute("aria-expanded", open);
+    };
+    c.onclick = act;
+    c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(e); } };
+  });
+}
+
 VIEWS.home = () => {
   const p = S.profile, cls = Number(p.cls), first = (p.name || "").split(" ")[0];
   $app.innerHTML = appbar(`<button class="ab-bell" id="bell" aria-label="Notifications">${svg("bell")}<i id="bdot" hidden></i></button>`) + `
@@ -607,6 +643,7 @@ VIEWS.home = () => {
       <div class="sc"><span class="sci c-gold">${svg("trophy")}</span><small>Rank</small><b>–</b><em>Class Rank</em></div>
       <div class="sc"><span class="sci c-purple">${svg("target")}</span><small>Test Time</small><b>–</b><em>This week</em></div>
     </div>
+    ${msecHTML()}
     <button class="promo" id="promo">
       <img src="${BOOKS[0].cover}" alt="" class="pm-cover">
       <span class="pm-t"><span class="pm-tag">${BOOKS[0].demo ? "Demo Book · Try at ₹9" : "New · Formula Book"}</span><b>${esc(BOOKS[0].title)}</b><small>${esc(BOOKS[0].sub)}</small>
@@ -634,6 +671,7 @@ VIEWS.home = () => {
   const $ = id => document.getElementById(id);
   const chap = () => go("chapters", { cls, subject: "Mathematics" });
   fillTopper($("topper"));
+  wireMsec($app);
   $("cont").onclick = chap;
   $("promo").onclick = () => go("book", { id: BOOKS[0].id });
   myPurchase(BOOKS[0]).then(pur => {
@@ -702,12 +740,14 @@ VIEWS.home = () => {
 VIEWS.courses = () => {
   const cls = Number(S.profile.cls);
   $app.innerHTML = appbar() + `<main><div class="in">
+    ${msecHTML()}
     <div class="sec-h"><h2>My Courses</h2><span>Class ${cls} · ${myMed()}</span></div>
     <div class="tiles" id="tiles"></div>
     ${mockCard()}
     <div class="sec-h"><h2>Maths for all classes</h2><span>6th to 12th</span></div>
     <div class="classes" id="cg"></div>
   </div></main>`;
+  wireMsec($app);
   courseTiles(document.getElementById("tiles"), cls);
   wireMock();
   const cg = document.getElementById("cg");
@@ -720,8 +760,8 @@ VIEWS.courses = () => {
   });
 };
 
-VIEWS.board10 = ({ cls }) => {
-  $app.innerHTML = header("RBSE Board", `Class ${cls} · Notes & Questions`, true) + `<main><div class="in">
+VIEWS.board10 = ({ cls, board = "RBSE" }) => {
+  $app.innerHTML = header(`${board} Board`, `Class ${cls} · Notes & Questions`, true) + `<main><div class="in">
     <div class="full"><h3>Full Syllabus Test</h3><p>A mixed paper from all Maths chapters in board exam format.</p>
       <div class="meta"><span>${FULL_Q} questions</span><span>+${MARK_RIGHT} / −${MARK_WRONG}</span></div>
       <button class="btn btn-gold" id="full" style="align-self:flex-start">Start test</button></div>
