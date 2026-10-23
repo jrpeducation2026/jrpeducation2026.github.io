@@ -414,3 +414,21 @@ img{-webkit-user-drag:none}
 .dr-i[data-dr="logout"]{color:var(--bad);border-top:1px solid var(--line);margin-top:6px}
 .dr-i[data-dr="logout"] svg{stroke:var(--bad)}
 @media (min-width:560px){.dr-panel{left:calc(50% - 240px)}.dr-bg{left:calc(50% - 240px);right:calc(50% - 240px)}}
+/* ===== weekly topper banner ===== */
+.topper{position:relative;overflow:hidden;display:flex;align-items:center;gap:14px;border-radius:18px;padding:14px 16px;
+  background:linear-gradient(120deg,#fff4d1,#ffe08a 55%,#f5c142);border:1px solid #f0c75a;box-shadow:0 6px 18px rgba(214,161,24,.25)}
+.topper.me{background:linear-gradient(120deg,#1f4fb6,#0f2a6b);border-color:var(--gold);color:#fff}
+.tp-medal{width:54px;height:54px;border-radius:50%;background:var(--navy);display:grid;place-items:center;flex:none;box-shadow:0 0 0 3px #fff,0 0 0 5px var(--gold);position:relative;z-index:1}
+.tp-medal svg{width:28px;height:28px;stroke:var(--gold);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.topper.me .tp-medal{background:var(--gold)}.topper.me .tp-medal svg{stroke:var(--navy)}
+.tp-t{flex:1;min-width:0;display:flex;flex-direction:column;position:relative;z-index:1}
+.tp-t small{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#8a6300}
+.tp-t b{font-family:var(--f-display);font-size:22px;line-height:1.1;color:var(--navy);overflow-wrap:anywhere}
+.tp-t span{font-size:13px;color:#6b5414}
+.tp-t em{font-style:normal;font-size:13px;font-weight:700;margin-top:4px;color:var(--gold-soft)}
+.topper.me .tp-t small{color:var(--gold)}.topper.me .tp-t b{color:#fff}.topper.me .tp-t span{color:#dbe4fb}
+.tp-conf{position:absolute;inset:0;pointer-events:none;opacity:.55;
+  background-image:radial-gradient(circle,#e2483d 1.5px,transparent 2px),radial-gradient(circle,#2f6fe4 1.5px,transparent 2px),radial-gradient(circle,#22a565 1.5px,transparent 2px);
+  background-size:38px 38px,52px 52px,44px 44px;background-position:6px 10px,24px 30px,40px 4px;animation:conf 6s linear infinite}
+@keyframes conf{to{background-position:6px 48px,24px 82px,40px 48px}}
+@media (prefers-reduced-motion:reduce){.tp-conf{animation:none}}
