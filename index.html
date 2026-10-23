@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" id="vp" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>JRP Education</title>
 <meta name="description" content="JRP Education online test series for classes 6 to 12.">
 <meta name="theme-color" content="#0f2a6b">
@@ -22,7 +22,7 @@
     de.style.zoom = "";
     var touch = window.matchMedia && matchMedia("(pointer: coarse)").matches;
     var iw = window.innerWidth;
-    if (touch && sw && iw > sw * 1.2) de.style.zoom = (iw / sw).toFixed(3);
+    if (touch && sw && iw >= 800 && iw > sw * 1.5) de.style.zoom = (iw / sw).toFixed(3);
   }
   fit();
   window.addEventListener("resize", function () { clearTimeout(window.__fitT); window.__fitT = setTimeout(fit, 150); });

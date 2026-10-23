@@ -184,6 +184,9 @@ function render() {
   $nav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tabs[current.view] ? "page" : "false"));
   const sec = current.view === "teacher" ? (current.args.sec || "dash") : "";
   $tnav.hidden = !sec;
+  // like a native app: no pinch zoom, except while reading a book
+  const vp = document.getElementById("vp");
+  if (vp) vp.setAttribute("content", "width=device-width,initial-scale=1," + (current.view === "reader" ? "maximum-scale=4,user-scalable=yes" : "maximum-scale=1,user-scalable=no") + ",viewport-fit=cover");
   $tnav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.sec === sec ? "page" : "false"));
   v(current.args);
 }

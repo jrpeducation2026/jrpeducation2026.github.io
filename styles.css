@@ -432,3 +432,7 @@ img{-webkit-user-drag:none}
   background-size:38px 38px,52px 52px,44px 44px;background-position:6px 10px,24px 30px,40px 4px;animation:conf 6s linear infinite}
 @keyframes conf{to{background-position:6px 48px,24px 82px,40px 48px}}
 @media (prefers-reduced-motion:reduce){.tp-conf{animation:none}}
+/* ===== behave like a native app ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation;overscroll-behavior:none}
+body{overscroll-behavior:none}
+main.reader{touch-action:pan-x pan-y pinch-zoom}
