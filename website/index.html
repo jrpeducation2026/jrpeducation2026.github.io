@@ -125,11 +125,14 @@ button{font:inherit;cursor:pointer;color:inherit}
 .feat b{font-family:var(--f-display);font-size:clamp(18px,4.8vw,26px);letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
 .feat span{font-size:13px;color:var(--mist);line-height:1.35}
 
-/* 4 NareX: full-bleed photo */
-.f4 .bg{background:#000}
-.f4 .bg img{width:100%;height:100%;object-fit:cover;object-position:62% 25%;filter:saturate(1.1) contrast(1.05)}
-.f4 .shade{background:linear-gradient(180deg,rgba(5,5,5,.15) 0%,rgba(5,5,5,.2) 35%,rgba(5,5,5,.92) 72%,#050505 100%),linear-gradient(90deg,rgba(106,61,240,.35),transparent 60%)}
-.f4{align-items:flex-end}
+/* 4 NareX: sharp poster card on a glowing stage */
+.b4{background:radial-gradient(60% 45% at 50% 30%,rgba(106,61,240,.55),transparent 70%),radial-gradient(50% 40% at 80% 90%,rgba(245,182,35,.25),transparent 70%),#07060d}
+.nxrow{display:flex;gap:clamp(16px,4vw,40px);align-items:center;flex-wrap:wrap}
+.poster{position:relative;width:min(100%,clamp(220px,64vw,420px));aspect-ratio:510/480;border-radius:10px;overflow:hidden;flex:none;
+  box-shadow:0 0 0 2px var(--gold),0 30px 80px rgba(0,0,0,.7),0 0 120px rgba(106,61,240,.45)}
+.poster img{width:100%;height:100%;object-fit:cover;display:block}
+.poster::after{content:"AI";position:absolute;right:10px;top:10px;font-family:var(--f-display);font-size:18px;letter-spacing:.08em;background:var(--gold);color:#000;padding:2px 10px;border-radius:3px}
+.nxrow .t{flex:1;min-width:240px;display:flex;flex-direction:column;gap:clamp(8px,1.8vh,16px)}
 .quote{font-size:clamp(17px,4.4vw,22px);line-height:1.4;border-left:3px solid var(--gold);padding-left:14px;max-width:30em}
 
 /* 5 book */
@@ -185,7 +188,7 @@ button{font:inherit;cursor:pointer;color:inherit}
 @keyframes bl{0%,100%{opacity:.25}50%{opacity:1}}
 
 @media (max-width:520px){.steps{grid-template-columns:1fr}.steps div{flex-direction:row;align-items:baseline;gap:10px}.top .btn{display:none}}
-@media (max-height:740px){.mega{font-size:clamp(52px,15vw,150px)}.huge{font-size:clamp(42px,12vw,110px)}.price{font-size:clamp(60px,17vw,140px)}.cover{width:clamp(96px,27vw,220px)}.crest{width:84px}}
+@media (max-height:740px){.poster{width:min(100%,clamp(180px,52vw,360px))}.f4 .mega{font-size:clamp(46px,13vw,120px)}.mega{font-size:clamp(52px,15vw,150px)}.huge{font-size:clamp(42px,12vw,110px)}.price{font-size:clamp(60px,17vw,140px)}.cover{width:clamp(96px,27vw,220px)}.crest{width:84px}}
 @media (max-height:640px){.lead{font-size:15px}.feat span{display:none}.f4 .quote{font-size:16px}}
 @media (prefers-reduced-motion:reduce){
   .cine .frame.on,.cine .frame.leaving{animation:fade .4s both}
@@ -244,12 +247,17 @@ button{font:inherit;cursor:pointer;color:inherit}
   </section>
 
   <section class="frame f4" aria-label="Meet NareX">
-    <div class="bg zoom"><img src="narex.jpg" alt=""></div><div class="shade"></div>
+    <div class="bg b4"></div><div class="shade"></div>
     <div class="wrap">
       <p class="kick up">Introducing</p>
-      <h2 class="mega"><span class="mask" style="--d:1"><span>NareX</span></span></h2>
-      <p class="quote up" style="--d:3">"Main NareX hoon, JRP Education ka AI guide. Kaunsa course, kitne ka, kaise join karna hai, poocho, main samjhata hoon."</p>
-      <div class="row up" style="--d:4"><button class="btn btn-gold" data-ask>Talk to NareX</button><button class="btn btn-line" data-ask="Kaun-kaun se courses hain?">Courses kya hain?</button></div>
+      <div class="nxrow">
+        <div class="poster zoom" style="--d:1"><img src="narex.jpg" alt="NareX"></div>
+        <div class="t">
+          <h2 class="mega"><span class="mask" style="--d:2"><span>NareX</span></span></h2>
+          <p class="quote up" style="--d:3">"Main NareX hoon, JRP Education ka AI guide. Kaunsa course, kitne ka, kaise join karna hai, poocho, main samjhata hoon."</p>
+          <div class="row up" style="--d:4"><button class="btn btn-gold" data-ask>Talk to NareX</button><button class="btn btn-line" data-ask="Kaun-kaun se courses hain?">Courses?</button></div>
+        </div>
+      </div>
     </div>
   </section>
 
