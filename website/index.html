@@ -256,8 +256,8 @@ button{font:inherit;cursor:pointer;color:inherit}
         <div class="poster zoom" style="--d:1"><img src="narex.jpg" alt="NareX"></div>
         <div class="t">
           <h2 class="mega"><span class="mask" style="--d:2"><span>NareX</span></span></h2>
-          <p class="quote up" style="--d:3">"Main NareX hoon, JRP Education ka AI guide. Kaunsa course, kitne ka, kaise join karna hai, poocho, main samjhata hoon."</p>
-          <div class="row up" style="--d:4"><button class="btn btn-gold" data-ask>Talk to NareX</button><button class="btn btn-line" data-ask="Kaun-kaun se courses hain?">Courses?</button></div>
+          <p class="quote up" style="--d:3">"Hi, I'm NareX, the AI guide of JRP Education. Ask me about our courses, the demo book, test series or how to join, and I'll explain it all in seconds."</p>
+          <div class="row up" style="--d:4"><button class="btn btn-gold" data-ask>Talk to NareX</button><button class="btn btn-line" data-ask="What courses do you offer?">Courses?</button></div>
         </div>
       </div>
     </div>
@@ -317,11 +317,11 @@ button{font:inherit;cursor:pointer;color:inherit}
 
 <div class="sheet" id="sheet" hidden>
   <div class="panel" role="dialog" aria-modal="true" aria-label="Chat with NareX">
-    <div class="ph"><img src="narex-face.jpg" alt=""><div><b>NAREX</b><small>JRP Education ka AI guide</small></div><button id="close" aria-label="Close">✕</button></div>
+    <div class="ph"><img src="narex-face.jpg" alt=""><div><b>NAREX</b><small>AI guide · JRP Education</small></div><button id="close" aria-label="Close">✕</button></div>
     <div class="msgs" id="msgs"></div>
-    <div class="qs" id="qs"><button>Kaun-kaun se courses hain?</button><button>Demo book kya hai?</button><button>App kaise join karein?</button><button>Test series kya hai?</button></div>
+    <div class="qs" id="qs"><button>What courses do you offer?</button><button>What is the demo book?</button><button>How do I join?</button><button>What is the test series?</button></div>
     <p class="left" id="left"></p>
-    <form class="compose" id="cf"><input id="cq" type="text" placeholder="Kuch bhi poocho…" autocomplete="off"><button id="cs" type="submit">Send</button></form>
+    <form class="compose" id="cf"><input id="cq" type="text" placeholder="Ask me anything…" autocomplete="off"><button id="cs" type="submit">Send</button></form>
   </div>
 </div>
 
@@ -388,7 +388,7 @@ const FACTS = `JRP Education facts (use ONLY these; never invent prices, phone n
 - YouTube channel: @jrpedu2026. Contact phone number: coming soon.
 - Install: Android (Chrome → Install app), iPhone (Safari → Share → Add to Home Screen).`;
 const PROMPT = `You are NareX, the AI guide on the JRP Education website. Personality: high-energy, confident, cool and friendly, like the hype host of a big launch; short punchy lines, at most one emoji per reply. Stay respectful and simple.
-Your job: explain JRP Education's courses and app to students and parents and guide them to join. Reply in the same language the visitor uses (Hinglish, Hindi in Devanagari, or English). Keep replies short: 2 to 5 lines or a few bullets. End with a clear next step, usually "Open the App" or "Create student account".
+Your job: explain JRP Education's courses and app to students and parents and guide them to join. Reply in clear, simple English by default. Only if the visitor writes in Hindi or Hinglish, reply in that same language. Keep replies short: 2 to 5 lines or a few bullets. End with a clear next step, usually "Open the App" or "Create student account".
 If asked a maths question, give a short hint and say the full step-by-step solution is in the app's NareX.
 If you do not know something (fees for other courses, timings, phone number), say it will be announced soon and suggest the YouTube channel. Never make up facts.
 ${FACTS}`;
@@ -397,7 +397,7 @@ const sheet = $("sheet"), msgs = $("msgs"), cq = $("cq"), cs = $("cs"), left = $
 const key = () => "jrp-web-narex-" + new Date().toISOString().slice(0, 10);
 const used = () => { try { return Number(localStorage.getItem(key())) || 0; } catch (e) { return 0; } };
 const use = () => { try { localStorage.setItem(key(), String(used() + 1)); } catch (e) {} };
-const showLeft = () => { const l = DAILY - used(); left.textContent = l > 0 ? `${l} questions left today` : "Aaj ki limit poori. App mein NareX se aur poocho!"; cs.disabled = l <= 0; };
+const showLeft = () => { const l = DAILY - used(); left.textContent = l > 0 ? `${l} questions left today` : "Daily limit reached. Ask more inside the app!"; cs.disabled = l <= 0; };
 const esc = s => String(s).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
 const fmt = t => esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 function bubble(who, html) { const d = document.createElement("div"); d.className = "m " + who; d.innerHTML = html; msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d; }
@@ -416,7 +416,7 @@ async function init() {
 }
 function open(q) {
   sheet.hidden = false;
-  if (!greeted) { greeted = true; bubble("bot", "Namaste! Main NareX hoon, JRP Education ka AI guide. Courses, Formula Book, test series, join kaise karein, kuch bhi poocho! ⚡"); }
+  if (!greeted) { greeted = true; bubble("bot", "Hi! I'm NareX, the AI guide of JRP Education. Ask me anything about our courses, the demo book, test series or how to join. ⚡"); }
   showLeft();
   if (q) send(q); else setTimeout(() => cq.focus(), 350);
 }
@@ -438,7 +438,7 @@ async function send(q) {
     use();
   } catch (x) {
     const s = String(x && (x.message || x.code) || "");
-    out.innerHTML = s.includes("429") || s.includes("quota") ? "Abhi bahut log baat kar rahe hain! Thodi der mein phir try karo." : "Oops, connection gaya. Internet check karke dobara try karo.";
+    out.innerHTML = s.includes("429") || s.includes("quota") ? "I'm a bit busy right now. Please try again in a few minutes." : "Connection lost. Please check your internet and try again.";
     chat = null;
   }
   showLeft();
