@@ -547,8 +547,9 @@ async function weeklyToppers(cls, med) {
   const thisW = weekStart(0), lastW = weekStart(-1);
   return { last: topperOf(rs, lastW, thisW), now: topperOf(rs, thisW, thisW + 7 * 864e5) };
 }
+const SHOW_WEEKLY_TOPPER = false; // set to true to show the Weekly Topper banner to students
 async function fillTopper(box) {
-  const p = S.profile; if (!box || !p) return;
+  const p = S.profile; if (!SHOW_WEEKLY_TOPPER || !box || !p) return;
   let t; try { t = await weeklyToppers(p.cls, myMed()); } catch (e) { return; }
   const top = t.last || t.now; if (!top || !box.isConnected) return;
   const me = top.uid === S.user.uid, live = !t.last;
