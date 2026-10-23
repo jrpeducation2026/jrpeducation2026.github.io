@@ -1754,7 +1754,7 @@ async function teacherDash(bar) {
         <p>Manage your classroom effortlessly with JRP Education.</p>
         <button class="btn btn-gold" id="ana">View Analytics →</button>
       </div>
-      <div class="hero-art" aria-hidden="true"><span>Teach</span><span>Create</span><span>Inspire</span></div>
+      <div class="hero-board" aria-hidden="true"><div class="chalk"><span>Teach</span><span>Create</span><span>Inspire</span></div><div class="hb-books"><i></i><i></i><i></i></div></div>
     </section>
     <div class="kpis" id="kp">${["Students", "Tests taken", "Questions", "Revenue"].map(t => `<div><b>–</b><span>${t}</span></div>`).join("")}</div>
     <div id="req"></div>

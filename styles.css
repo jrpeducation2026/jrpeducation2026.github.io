@@ -524,3 +524,46 @@ main.reader{touch-action:pan-x pan-y pinch-zoom}
 .bycls{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
 .bycls summary{font-weight:700;font-size:14px;color:var(--navy);cursor:pointer}
 .bycls .list{margin-top:10px}
+
+/* ===== v3.1 compact top section (header + hero), like the mockup ===== */
+.appbar .in{gap:8px;padding-block:8px}
+.ab-logo{width:38px;height:38px}
+.ab-t{min-width:0;overflow:hidden}
+.ab-t b{font-size:17px;white-space:nowrap;letter-spacing:.01em;line-height:1.1}
+.ab-t small{font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em}
+.ab-bell{width:34px;height:34px;background:none;border-radius:50%}
+.ab-bell svg{width:24px;height:24px}
+.ab-bell i{top:3px;right:3px}
+.ab-chip{padding:2px 6px 2px 2px;gap:4px;max-width:122px}
+.ab-av{width:30px;height:30px;font-size:12px}
+.ab-av svg{width:16px;height:16px}
+.ab-ct b{font-size:12.5px;max-width:58px}
+.ab-ct small{font-size:10.5px}
+.chev{width:14px;height:14px}
+@media (max-width:360px){.ab-ct{display:none}.ab-t b{font-size:15px}}
+/* hero: shorter, cleaner */
+.hero{min-height:0;border-radius:18px}
+.hero-t{padding:14px 0 14px 16px;gap:2px;flex:1.5}
+.hero-t small{font-size:13px}
+.hero-t h1{font-size:25px}
+.hero-t p{font-size:12.5px;line-height:1.35}
+.hero-t .btn{margin-top:8px;padding:7px 14px;font-size:13px}
+.hero::after{right:-50px;bottom:-95px;width:180px;height:140px;border-width:8px;z-index:0}
+.hero::before{right:-70px;top:-70px;width:200px;height:200px}
+.hero-art{padding:10px 12px 10px 0}
+.hero-art span{font-size:clamp(19px,5.4vw,26px)}
+/* teacher chalkboard */
+.hero-board{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 12px 10px 4px;gap:0}
+.chalk{background:#1f3b2c;border:5px solid #a8743e;border-radius:6px;padding:6px 10px;transform:rotate(-3deg);box-shadow:0 6px 14px rgba(0,0,0,.35);display:flex;flex-direction:column;align-items:center;min-width:0}
+.chalk span{font-family:var(--f-script);font-size:clamp(16px,4.6vw,22px);line-height:1;color:#f4f1e8}
+.chalk span:nth-child(2){color:var(--gold-2,#ffd86b)}
+.hb-books{display:flex;gap:2px;margin-top:-2px;align-self:flex-end;margin-right:6px}
+.hb-books i{display:block;width:30px;height:8px;border-radius:2px;background:#e2483d}
+.hb-books i:nth-child(2){background:#2f6fe4;width:26px}.hb-books i:nth-child(3){background:var(--gold);width:22px}
+.hb-books{flex-direction:column;align-items:flex-end}
+/* stat cards: icon beside label, compact */
+.sc,.kpis>div{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto auto;column-gap:6px;align-items:center;padding:9px 8px}
+.sci,.ki{grid-row:1/3;width:28px;height:28px;margin:0;align-self:start}
+.sc small,.kpis>div>span:not(.ki){grid-column:2;font-size:10.5px;line-height:1.15;color:var(--muted)}
+.sc b,.kpis b{grid-column:2;font-size:21px;line-height:1.1}
+.sc em,.kpis em{grid-column:1/3;font-size:10px;margin-top:4px;line-height:1.2}
