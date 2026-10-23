@@ -475,6 +475,11 @@ VIEWS.home = () => {
   const p = S.profile, cls = Number(p.cls), first = (p.name || "").split(" ")[0];
   $app.innerHTML = appbar(`<button class="ab-bell" id="bell" aria-label="Notices">${svg("bell")}<i id="bdot" hidden></i></button>`) + `
   <main><div class="in">
+    <button class="promo" id="promo" data-book="${BOOKS[0].id}">
+      <img src="${BOOKS[0].cover}" alt="" class="pm-cover">
+      <span class="pm-t"><span class="pm-tag">New · Formula Book</span><b>${esc(BOOKS[0].title)}</b><small>${esc(BOOKS[0].sub)}</small>
+        <span class="pm-row"><span class="pm-price">₹${BOOKS[0].price}</span><span class="pm-cta" id="pmCta">Unlock now →</span></span></span>
+    </button>
     <div class="welcome"><div class="wl-av">${esc(initials(p.name))}</div><div class="wl-t"><small>Welcome back!</small><h1>${esc(first)}</h1><p>Class ${cls} · ${myMed()} medium · Keep learning, keep growing!</p></div></div>
     <button class="progress card" id="prog"><span class="pr-ring">${ring(0)}</span><span class="pr-t"><small>Your learning progress</small><b id="prN">–/–</b><span>Maths chapters completed</span></span><span class="link">View details →</span></button>
     <button class="banner live" id="liveAlert" hidden></button>
@@ -496,6 +501,12 @@ VIEWS.home = () => {
   </div></main>`;
   const $ = id => document.getElementById(id);
   courseTiles($("tiles"), cls);
+  $("promo").onclick = () => go("book", { id: BOOKS[0].id });
+  myPurchase(BOOKS[0]).then(pur => {
+    const c = $("pmCta"); if (!c || !pur) return;
+    if (pur.status === "approved") { c.textContent = "Read now →"; $("promo").onclick = () => go("reader", { id: BOOKS[0].id }); }
+    else if (pur.status === "pending") c.textContent = "Payment under review";
+  });
   $("allC").onclick = () => resetTo("courses");
   $("allT").onclick = () => go("series");
   $("bell").onclick = () => go("notices");
