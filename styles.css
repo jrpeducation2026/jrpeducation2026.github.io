@@ -602,34 +602,28 @@ main.reader{touch-action:pan-x pan-y pinch-zoom}
 @media (max-width:400px){.ab-ct{display:none!important}.ab-chip{padding:2px 4px 2px 2px}.ab-t small{display:block;font-size:10px}}
 
 /* scroll ends right after the last line: space only for the bottom bar when it is shown */
-@supports selector(:has(a)){
-  main .in{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
-  body:has(#nav:not([hidden])) main .in,body:has(#tnav:not([hidden])) main .in{padding-bottom:calc(var(--navh,66px) + 12px + env(safe-area-inset-bottom,0px))}
-  main.chatmain .in{padding-bottom:calc(var(--comph,120px) + 12px)}
-}
+main .in{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+body.hasbar main .in{padding-bottom:calc(var(--navh,66px) + 12px + env(safe-area-inset-bottom,0px))}
+main.chatmain .in{padding-bottom:calc(var(--comph,120px) + 12px)}
 
-/* Maths Sections – same look as the website */
-.msx{background:linear-gradient(160deg,#0b1430 0%,#0f2a6b 60%,#1b2f6e 100%);border-radius:20px;padding:16px 14px 14px;color:#fff;box-shadow:0 8px 24px rgba(15,42,107,.22)}
-.msx-k{margin:0;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#ffd56a}
-.msx-h{font-family:"Montserrat","Mukta",sans-serif;font-weight:600;font-size:20px;line-height:1.2;margin:4px 0 12px;color:#fff}
-.msx-h em{font-style:normal;color:#ffd56a}
-.msx-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-.msx-c{position:relative;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:14px;padding:8px 10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0;cursor:pointer;text-align:left}
-.msx-c:active{transform:scale(.98)}
-.msx-c.school{border-color:rgba(255,213,106,.6)}
-.msx-art{display:block;height:64px;margin:0 -4px 2px;border-radius:10px;background:rgba(255,255,255,.05)}
-.msx-art svg{width:100%;height:100%;display:block}
-.msx-c i{font-family:"Montserrat",sans-serif;font-style:normal;font-weight:600;font-size:11.5px;letter-spacing:.12em;color:#ffd56a}
-.msx-c b{font-family:"Montserrat",sans-serif;font-weight:600;font-size:15px;line-height:1.2;color:#fff}
-.msx-s{font-size:12px;line-height:1.35;color:rgba(255,255,255,.72);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.msx-c i{display:flex;align-items:center;justify-content:space-between;gap:4px}
-.msx-c small{font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#000;background:#ffd56a;border-radius:999px;padding:2px 7px}
-.msx-c .tap{font-style:normal;font-size:12px;font-weight:700;color:#ffd56a;margin-top:4px}
-.msx-c.open .tap{display:none}
-.msx-c .boards{display:grid;grid-template-columns:1fr;gap:6px;margin-top:6px}
-@media (min-width:420px){.msx-c .boards{grid-template-columns:1fr 1fr}}
+/* Maths Sections – pastel cards with line art */
+.msx{display:flex;flex-direction:column;gap:12px}
+.msx-hd small{font-size:13px;color:var(--muted)}
+.msx-hd h2{font-family:"Baloo 2",var(--f-display);font-weight:800;font-size:30px;line-height:1.05;color:var(--ink);margin:0}
+.msx-hd p{margin:2px 0 0;font-size:14px;color:var(--muted)}
+.msx-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.msx-c{--tone:#b5470f;--tint:#fde6d6;background:#fff;border-radius:20px;overflow:hidden;display:flex;flex-direction:column;cursor:pointer;box-shadow:0 4px 14px rgba(15,42,107,.08);transition:transform .15s}
+.msx-c:active{transform:scale(.97)}
+.msx-c.olympiad{--tone:#1f4fb6;--tint:#dde7fb}
+.msx-c.vedic{--tone:#6b3fa8;--tint:#ece2f7}
+.msx-c.advance{--tone:#12705c;--tint:#d6efe9}
+.msx-art{position:relative;display:grid;place-items:center;background:var(--tint);color:var(--tone);aspect-ratio:16/11}
+.msx-art svg{width:72%;height:auto}
+.msx-art small{position:absolute;top:8px;right:8px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:var(--tone);border-radius:999px;padding:2px 8px}
+.msx-b{display:flex;flex-direction:column;gap:1px;padding:10px 12px 12px}
+.msx-b b{font-family:"Baloo 2",var(--f-display);font-weight:800;font-size:17px;line-height:1.15;color:var(--tone)}
+.msx-s{font-size:12px;color:var(--muted);line-height:1.3}
+.msx-c .boards{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
 .msx-c .boards[hidden]{display:none}
-.msx-c .boards button{display:flex;flex-direction:column;align-items:center;border:0;border-radius:10px;padding:7px 6px;background:#ffd56a;color:#000;font:inherit}
-.msx-c .boards button:nth-child(2){background:#fff}
-.msx-c .boards strong{font-family:"Montserrat",sans-serif;font-weight:700;font-size:17px;letter-spacing:.06em}
-.msx-c .boards span{font-size:11px;color:#3a3a3a}
+.msx-c .boards button{border:0;border-radius:10px;padding:8px 4px;font:800 14px/1 "Baloo 2",var(--f-display);letter-spacing:.04em;color:#fff;background:#b5470f}
+.msx-c .boards button+button{background:#1f4fb6}
