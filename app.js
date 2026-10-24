@@ -194,7 +194,7 @@ window.addEventListener("resize", fitBars);
 function render() {
   window.scrollTo(0, 0);
   const v = VIEWS[current.view];
-  const tabs = { home: "home", notices: "home", courses: "courses", subjects: "courses", chapters: "courses", notes: "courses", board10: "courses",
+  const tabs = { home: "home", notices: "home", courses: "courses", subjects: "courses", chapters: "courses", chapter: "courses", notes: "courses", board10: "courses",
     practice: "tests", daily: "tests", tests: "tests", series: "tests", results: "results", board: "results", profile: "profile" };
   $nav.hidden = !tabs[current.view];
   $nav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tabs[current.view] ? "page" : "false"));
@@ -638,7 +638,7 @@ VIEWS.home = () => {
         <p>Keep learning, keep growing with JRP Education.</p>
         <button class="btn btn-gold" id="cont">Continue Learning →</button>
       </div>
-      <div class="hero-art" aria-hidden="true"><span>Think</span><span>Learn</span><span>Grow</span><span>Succeed</span></div>
+      <div class="hero-art" aria-hidden="true"><img class="hero-mascot" src="website/narex-face.jpg" alt=""><span>Think · Learn</span><span>Grow · Succeed</span></div>
     </section>
     <div class="scards" id="sc">
       <div class="sc"><span class="sci c-green">${svg("test")}</span><small>Total Tests</small><b>–</b><em>&nbsp;</em></div>
@@ -740,20 +740,50 @@ VIEWS.home = () => {
   fillSeries(document.createElement("div"), false);
 };
 
+const PATHS = {
+  school: { t: "School Maths", items: cls => [
+    { t: `Maths NCERT · Class ${cls}`, s: "All chapters, tests, notes and videos", tags: ["Chapters", "Tests"], ic: "book", tone: "p1", f: () => go("chapters", { cls, subject: "Mathematics" }) },
+    { t: "RBSE Board", s: "Rajasthan Board · full syllabus test", tags: ["Board"], ic: "board", tone: "p2", f: () => go("board10", { cls, board: "RBSE" }) },
+    { t: "CBSE Board", s: "Central Board · full syllabus test", tags: ["Board"], ic: "board", tone: "p3", f: () => go("board10", { cls, board: "CBSE" }) },
+    { t: "Free Mock Test", s: "10 MCQs · Class 10", tags: ["Free"], ic: "test", tone: "p4", f: () => go("mock") },
+    { t: BOOKS[0].title, s: `Demo book · ₹${BOOKS[0].price}`, tags: ["Book"], ic: "books", tone: "p5", f: () => go("book", { id: BOOKS[0].id }) }
+  ] },
+  olympiad: { t: "Olympiad", items: () => [
+    { t: "Olympiad Prep", s: "Olympiad-level problems and mock tests", tags: ["Soon"], ic: "trophy", tone: "p3", soon: true },
+    { t: "Maths Puzzles", s: "Logic and reasoning practice", tags: ["Soon"], ic: "spark", tone: "p1", soon: true }
+  ] },
+  vedic: { t: "Vedic Maths", items: () => [
+    { t: "Vedic Speed Tricks", s: "Calculate much faster", tags: ["Soon"], ic: "bolt", tone: "p4", soon: true },
+    { t: "Mental Calculation", s: "Solve sums without a calculator", tags: ["Soon"], ic: "target", tone: "p2", soon: true }
+  ] },
+  advance: { t: "Advance Maths", items: () => [
+    { t: "JEE Foundation", s: "Concepts for JEE and higher level", tags: ["Soon"], ic: "chart", tone: "p5", soon: true },
+    { t: "Higher Maths", s: "Calculus, algebra and more", tags: ["Soon"], ic: "book", tone: "p3", soon: true }
+  ] }
+};
+let learnTab = "school";
 VIEWS.courses = () => {
   const cls = Number(S.profile.cls);
   $app.innerHTML = appbar() + `<main><div class="in">
-    ${msecHTML()}
+    <section class="lp"><div class="lp-hd"><img src="website/narex-face.jpg" alt="" class="lp-mascot"><div><small>Hi ${esc((S.profile.name || "").split(" ")[0])}!</small><h2>Learning Path</h2><p>Choose what you want to learn</p></div></div>
+      <div class="lp-tabs" role="tablist">${Object.entries(PATHS).map(([k, v]) => `<button role="tab" data-lp="${k}" aria-selected="${k === learnTab}">${v.t}</button>`).join("")}</div>
+      <div class="lp-list" id="lpl"></div></section>
     ${ytCard()}
-    <div class="sec-h"><h2>My Courses</h2><span>Class ${cls} · ${myMed()}</span></div>
-    <div class="tiles" id="tiles"></div>
-    ${mockCard()}
     <div class="sec-h"><h2>Maths for all classes</h2><span>6th to 12th</span></div>
     <div class="classes" id="cg"></div>
   </div></main>`;
-  wireMsec($app);
-  courseTiles(document.getElementById("tiles"), cls);
-  wireMock();
+  const fill = () => {
+    $app.querySelectorAll("[data-lp]").forEach(b => b.setAttribute("aria-selected", b.dataset.lp === learnTab));
+    const box = document.getElementById("lpl"); box.innerHTML = "";
+    PATHS[learnTab].items(cls).forEach(x => {
+      const b = document.createElement("button"); b.className = "lp-c " + x.tone + (x.soon ? " is-soon" : "");
+      b.innerHTML = `<span class="lp-ic">${svg(x.ic)}</span><span class="lp-t"><b>${esc(x.t)}</b><small>${esc(x.s)}</small><span class="lp-tags">${x.tags.map(t => `<i>${t}</i>`).join("")}</span></span><span class="lp-go">›</span>`;
+      b.onclick = x.soon ? () => toast(`${x.t} is coming soon`) : x.f;
+      box.appendChild(b);
+    });
+  };
+  $app.querySelectorAll("[data-lp]").forEach(b => b.onclick = () => { learnTab = b.dataset.lp; fill(); });
+  fill();
   const cg = document.getElementById("cg");
   CLASSES.forEach(n => {
     const b = document.createElement("button");
@@ -932,13 +962,44 @@ VIEWS.chapters = async ({ cls, subject }) => {
   chs.forEach((c, i) => {
     const r = best[testKey(cls, subject, c)];
     const d = document.createElement("div"); d.className = "ch";
+    d.className = "ch chx p" + (i % 5 + 1); d.setAttribute("role", "button"); d.tabIndex = 0;
     d.innerHTML = `<div class="ch-top"><div class="ch-n">${i + 1}</div><div class="ch-t"><h3>${esc(c)}</h3>
-      <span class="${r ? "done" : ""}">${r ? `Best score: ${r.score}/${r.max}` : `${CHAPTER_Q} questions · Not attempted`}</span></div></div>
-      <div class="ch-b"><button class="btn btn-gold" data-a="t">Take test</button><button class="btn btn-line" data-a="n">Notes</button>${videoFor(cls, subject, myMed(), c) ? `<a class="btn btn-line vid" href="${esc(videoFor(cls, subject, myMed(), c))}" target="_blank" rel="noopener">Video</a>` : ""}${ncertChapterUrl(cls, subject, myMed(), c) ? `<a class="btn btn-line" href="${ncertChapterUrl(cls, subject, myMed(), c)}" target="_blank" rel="noopener">NCERT</a>` : ""}</div>`;
-    d.querySelector('[data-a="t"]').onclick = () => go("test", { cls, subject, chapter: c });
-    d.querySelector('[data-a="n"]').onclick = () => go("notes", { cls, subject, chapter: c });
+      <span class="${r ? "done" : ""}">${r ? `Best score: ${r.score}/${r.max}` : "Video · Notes · Test · NCERT"}</span></div><span class="lp-go">›</span></div>`;
+    d.onclick = () => go("chapter", { cls, subject, chapter: c, n: i + 1 });
+    d.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); d.onclick(); } };
     list.appendChild(d);
   });
+};
+
+/* ----- one chapter: everything in one place ----- */
+VIEWS.chapter = async ({ cls, subject, chapter, n }) => {
+  const med = myMed(), vid = videoFor(cls, subject, med, chapter), nc = ncertChapterUrl(cls, subject, med, chapter);
+  $app.innerHTML = header(chapter, `Class ${cls} · Chapter ${n || ""}`.trim(), true) + `<main><div class="in">
+    <div class="chx-hero"><img src="website/narex-face.jpg" alt=""><div><small>Chapter ${n || ""}</small><h2>${esc(chapter)}</h2><p id="chBest">Learn, practise and test this chapter.</p></div></div>
+    <div class="hub" id="hub"></div>
+  </div></main>`;
+  const T = [
+    { t: "Video", s: vid ? "Watch lesson" : "YouTube", ic: "video", tone: "p2", f: () => window.open(vid || YOUTUBE_URL, "_blank", "noopener") },
+    { t: "Notes", s: "Short notes", ic: "book", tone: "p4", f: () => go("notes", { cls, subject, chapter }) },
+    { t: "NCERT Book", s: "Chapter PDF", ic: "download", tone: "p3", f: () => nc ? window.open(nc, "_blank", "noopener") : toast("NCERT link not available") },
+    { t: "Chapter Test", s: `${CHAPTER_Q} MCQs · +${MARK_RIGHT}/−${MARK_WRONG}`, ic: "test", tone: "p1", f: () => go("test", { cls, subject, chapter }) },
+    { t: "Practice", s: "Your wrong answers", ic: "target", tone: "p5", f: () => go("practice") },
+    { t: "Ask NareX", s: "Doubt? Send a photo", ic: "help", tone: "p6", f: () => go("narex") },
+    { t: "Formula Book", s: `Demo · ₹${BOOKS[0].price}`, ic: "books", tone: "p7", f: () => go("book", { id: BOOKS[0].id }) },
+    { t: "PYQs", s: "Previous year Qs", ic: "chart", tone: "p8", soon: true }
+  ];
+  const hub = document.getElementById("hub");
+  T.forEach(x => {
+    const b = document.createElement("button"); b.className = "hub-t " + x.tone;
+    b.innerHTML = `<span class="hub-ic">${svg(x.ic)}</span><b>${x.t}</b><small>${x.soon ? "Coming soon" : x.s}</small>`;
+    b.onclick = x.soon ? () => toast(`${x.t} coming soon`) : x.f;
+    hub.appendChild(b);
+  });
+  try {
+    const mine = await loadMyResults(); const k = testKey(cls, subject, chapter);
+    const best = mine.filter(r => r.testKey === k).sort((a, b) => b.score - a.score)[0];
+    const el = document.getElementById("chBest"); if (best && el) el.textContent = `Best score: ${best.score}/${best.max}`;
+  } catch (e) {}
 };
 
 VIEWS.notes = async ({ cls, subject, chapter }) => {
