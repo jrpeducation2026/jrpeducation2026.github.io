@@ -194,7 +194,7 @@ window.addEventListener("resize", fitBars);
 function render() {
   window.scrollTo(0, 0);
   const v = VIEWS[current.view];
-  const tabs = { home: "home", notices: "home", courses: "courses", subjects: "courses", chapters: "courses", chapter: "courses", notes: "courses", board10: "courses",
+  const tabs = { home: "home", notices: "home", courses: "courses", subjects: "courses", chapters: "courses", chapter: "courses", vedic: "courses", notes: "courses", board10: "courses",
     practice: "tests", daily: "tests", tests: "tests", series: "tests", results: "results", board: "results", profile: "profile" };
   $nav.hidden = !tabs[current.view];
   $nav.querySelectorAll("button").forEach(b => b.setAttribute("aria-current", b.dataset.tab === tabs[current.view] ? "page" : "false"));
@@ -598,7 +598,7 @@ const MSEC_ART = {
 };
 const MSECS = [
   { id: "school", t: "School Maths", s: "RBSE · CBSE" },
-  { id: "vedic", t: "Vedic Maths", s: "Fast calculation tricks", soon: true },
+  { id: "vedic", t: "Vedic Maths", s: "Free speed tricks" },
   { id: "olympiad", t: "Olympiad", s: "Olympiad preparation", soon: true },
   { id: "advance", t: "Advance Maths", s: "JEE · Higher level", soon: true }
 ];
@@ -618,6 +618,7 @@ function wireMsec(root) {
       if (bd) { go("board10", { cls, board: bd.dataset.bd }); return; }
       const m = MSECS.find(x => x.id === c.dataset.ms);
       if (m.soon) { toast(`${m.t} is coming soon`); return; }
+      if (m.id === "vedic") { go("vedic"); return; }
       const b = c.querySelector(".boards"), open = b.hidden;
       b.hidden = !open; c.classList.toggle("open", open); c.setAttribute("aria-expanded", open);
     };
@@ -753,7 +754,7 @@ const PATHS = {
     { t: "Maths Puzzles", s: "Logic and reasoning practice", tags: ["Soon"], ic: "spark", tone: "p1", soon: true }
   ] },
   vedic: { t: "Vedic Maths", items: () => [
-    { t: "Vedic Speed Tricks", s: "Calculate much faster", tags: ["Soon"], ic: "bolt", tone: "p4", soon: true },
+    { t: "Vedic Speed Tricks", s: "8 free tricks with practice", tags: ["Free"], ic: "bolt", tone: "p4", f: () => go("vedic") },
     { t: "Mental Calculation", s: "Solve sums without a calculator", tags: ["Soon"], ic: "target", tone: "p2", soon: true }
   ] },
   advance: { t: "Advance Maths", items: () => [
@@ -1369,6 +1370,30 @@ const MOCK = {
 const mockCard = () => `<button class="banner mock" data-mock>
   <div class="ic">10</div><div style="flex:1;min-width:0"><h3>Free Mock Test</h3><p>Class 10 Maths · 10 MCQs · English & Hindi medium</p></div></button>`;
 function wireMock() { $app.querySelectorAll("[data-mock]").forEach(b => b.onclick = () => go("mock")); }
+/* ----- Vedic Maths: free speed tricks ----- */
+const VEDIC = [
+  { t: "Square of numbers ending in 5", cls: "Class 6+", rule: "Multiply the first part by the next number, then write 25 at the end.", ex: "35² → 3 × 4 = 12, then 25 → 1225", q: [["45²", "2025"], ["65²", "4225"], ["105²", "11025"]] },
+  { t: "Multiply by 11", cls: "Class 6+", rule: "Write the outer digits and put their sum in the middle (carry if the sum is 10 or more).", ex: "52 × 11 → 5 (5+2) 2 → 572", q: [["43 × 11", "473"],["27 × 11", "297"], ["86 × 11", "946"]] },
+  { t: "Multiply numbers near 100", cls: "Class 7+", rule: "Find how much each is below 100. Cross-subtract for the first part, multiply the shortfalls for the last two digits.", ex: "97 × 96 → shortfalls 3, 4 → 97 − 4 = 93, 3 × 4 = 12 → 9312", q: [["98 × 97", "9506"], ["95 × 99", "9405"], ["94 × 96", "9024"]] },
+  { t: "Subtract from 1000 (All from 9, last from 10)", cls: "Class 6+", rule: "Subtract every digit from 9 and the last digit from 10.", ex: "1000 − 357 → 9−3, 9−5, 10−7 → 643", q: [["1000 − 468", "532"], ["1000 − 129", "871"], ["10000 − 2754", "7246"]] },
+  { t: "Multiply by 5", cls: "Class 6+", rule: "Multiply by 10, then halve the answer.", ex: "68 × 5 → 680 ÷ 2 = 340", q: [["46 × 5", "230"], ["124 × 5", "620"], ["87 × 5", "435"]] },
+  { t: "Same first digit, last digits add to 10", cls: "Class 8+", rule: "First digit × (first digit + 1), then write last digit × last digit as two digits.", ex: "43 × 47 → 4 × 5 = 20, 3 × 7 = 21 → 2021", q: [["62 × 68", "4216"], ["81 × 89", "7209"], ["54 × 56", "3024"]] },
+  { t: "Square of numbers near 50", cls: "Class 9+", rule: "25 ± difference gives the first part; difference² gives the last two digits.", ex: "53² → 25 + 3 = 28, 3² = 09 → 2809", q: [["52²", "2704"], ["47²", "2209"], ["56²", "3136"]] },
+  { t: "Divide by 5", cls: "Class 6+", rule: "Double the number, then divide by 10.", ex: "235 ÷ 5 → 470 ÷ 10 = 47", q: [["365 ÷ 5", "73"], ["1240 ÷ 5", "248"], ["87 ÷ 5", "17.4"]] }
+];
+VIEWS.vedic = () => {
+  $app.innerHTML = header("Vedic Maths", "Speed tricks · Class 6–10 · Free", true) + `<main><div class="in">
+    <div class="chx-hero"><img src="website/narex-face.jpg" alt=""><div><small>Free · ${VEDIC.length} tricks</small><h2>Calculate faster!</h2><p>Learn a trick, then try the 3 questions. Tap a question to see the answer.</p></div></div>
+    <div class="lp-list">${VEDIC.map((v, i) => `<div class="vd p${i % 8 + 1}">
+      <div class="vd-h"><span class="vd-n">${i + 1}</span><b>${v.t}</b><i>${v.cls}</i></div>
+      <p class="vd-r">${v.rule}</p><p class="vd-e"><span>Example</span>${v.ex}</p>
+      <div class="vd-q">${v.q.map(([a, b]) => `<button data-ans="${b}">${a} = <em>?</em></button>`).join("")}</div>
+    </div>`).join("")}</div>
+    <p class="hint" style="text-align:center">More Vedic Maths lessons and tests coming soon.</p>
+  </div></main>`;
+  $app.querySelectorAll("[data-ans]").forEach(b => b.onclick = () => { const e = b.querySelector("em"); e.textContent = e.textContent === "?" ? b.dataset.ans : "?"; b.classList.toggle("on"); });
+};
+
 VIEWS.mock = ({ medium } = {}) => {
   const med = medium || (S.profile ? myMed() : "English");
   const qs = MOCK[med];

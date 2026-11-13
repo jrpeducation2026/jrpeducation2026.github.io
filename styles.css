@@ -703,3 +703,16 @@ input,select,textarea{border-radius:14px!important}
 .hub-ic svg{width:28px;height:28px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .hub-t b{font-size:16px;font-weight:900;line-height:1.2}
 .hub-t small{font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+/* Vedic tricks */
+.vd{background:var(--pt);border:1.5px solid var(--pl);border-radius:22px;padding:14px;box-shadow:0 4px 0 var(--pl);display:flex;flex-direction:column;gap:8px}
+.vd-h{display:flex;align-items:center;gap:10px}
+.vd-n{width:34px;height:34px;border-radius:12px;background:#fff;color:var(--pd);display:grid;place-items:center;font-weight:900;flex:none}
+.vd-h b{flex:1;font-size:16px;font-weight:900;line-height:1.2}
+.vd-h i{font-style:normal;font-size:10px;font-weight:900;text-transform:uppercase;color:var(--pd);background:rgba(255,255,255,.8);border-radius:6px;padding:2px 6px;white-space:nowrap}
+.vd-r{margin:0;font-size:14.5px;line-height:1.45}
+.vd-e{margin:0;background:#fff;border-radius:12px;padding:8px 10px;font-weight:800;font-size:15px}
+.vd-e span{display:block;font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--pd)}
+.vd-q{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.vd-q button{border:1.5px dashed var(--pd);background:rgba(255,255,255,.6);border-radius:12px;padding:8px 4px;font:800 13.5px/1.2 var(--f-body);color:var(--ink);min-height:44px}
+.vd-q button.on{background:#fff;border-style:solid}
+.vd-q em{font-style:normal;color:var(--pd)}
